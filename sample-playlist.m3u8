@@ -1,0 +1,25 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="10704" tvg-name="DTB 釣り" tvg-logo="https://channel.rakuten.co.jp/service/img/logo/chlogo-with-number/198_fishing.png" group-title="BS",DTB 釣り (Primehome)
+https://cdn-apne1.tsv2.amagi.tv/linear/amg01287-rakutentvjapan-fishinghlscmaf-rakutenjp/playlist.m3u8
+#EXTINF:-1 tvg-id="10806" tvg-name="ゴルフ ネットワーク" tvg-logo="https://www.lyngsat.com/logo/tv/gg/golf-network-jp.png" group-title="CS",ゴルフ ネットワーク（スポーツ）
+https://nl.utako.moe/golf_network/index.m3u8
+#EXTINF:-1 tvg-id="10724" tvg-name="ショップチャンネル" tvg-logo="https://i.imgur.com/3K36JEA.jpg" group-title="CS",ショップチャンネル
+https://stream3.shopch.jp/HLS/master.m3u8
+#EXTINF:-1 tvg-id="1001" tvg-name="NHK総合" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/6/6f/NHK_logo_2020.svg" group-title="地上波",NHK総合
+mock://nhk-general
+#EXTINF:-1 tvg-id="1002" tvg-name="テレビ朝日" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/5/51/TV_Asahi_Logo.svg" group-title="地上波",テレビ朝日
+mock://tv-asahi
+#EXTINF:-1 tvg-id="1003" tvg-name="TBS" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/1/14/Tokyo_Broadcasting_System_logo_2020.svg" group-title="地上波",TBS
+mock://tbs
+#EXTINF:-1 tvg-id="1004" tvg-name="フジテレビ" tvg-logo="https://upload.wikimedia.org/wikipedia/fr/6/65/Fuji_TV_Logo.svg" group-title="地上波",フジテレビ
+mock://fuji-tv
+#EXTINF:-1 tvg-id="2001" tvg-name="BS11" tvg-logo="https://www.lyngsat.com/logo/tv/bb/bs11_jp.png" group-title="BS",BS11
+mock://bs11
+#EXTINF:-1 tvg-id="2002" tvg-name="BSフジ" tvg-logo="https://www.lyngsat.com/logo/tv/bb/bsfuji-jp.png" group-title="BS",BSフジ
+mock://bs-fuji
+#EXTINF:-1 tvg-id="2003" tvg-name="WOWOW" tvg-logo="https://corporate.wowow.co.jp/recruit/assets/img/common/logo02.svg" group-title="BS",WOWOW
+mock://wowow
+#EXTINF:-1 tvg-id="3001" tvg-name="アニマックス" tvg-logo="https://www.lyngsat.com/logo/tv/aa/animax_jp.png" group-title="CS",アニマックス
+mock://animax
+#EXTINF:-1 tvg-id="3002" tvg-name="キッズステーション" tvg-logo="https://www.lyngsat.com/logo/tv/kk/kids-station-jp.png" group-title="CS",キッズステーション
+mock://kids-station
