@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Channel } from '../types/channel';
 import type { ProfileSession } from '../types/profile';
 
@@ -16,6 +16,7 @@ export function usePlaylist(options?: UsePlaylistOptions) {
   const [parseError, setParseError] = useState<string | null>(null);
   const [isElectron] = useState(() => typeof window !== 'undefined' && window.electronAPI !== undefined);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
+  const lastLoadedPath = useRef<string | null>(null); // Track loaded path to prevent reloads
 
   // Load playlist from file path
   const loadPlaylistFromPath = useCallback(async (path: string) => {
@@ -32,6 +33,7 @@ export function usePlaylist(options?: UsePlaylistOptions) {
         setChannels(result.parseResult.data.channels);
         setCategories(result.parseResult.data.categories);
         setParseError(null);
+        lastLoadedPath.current = path; // Mark as loaded
         console.log(`[Playlist] Restored ${result.parseResult.data.channels.length} channels from ${path}`);
         if (result.parseResult.skippedCount) {
           console.warn(`[Playlist] Skipped ${result.parseResult.skippedCount} malformed entries`);
@@ -97,14 +99,19 @@ export function usePlaylist(options?: UsePlaylistOptions) {
 
   // Auto-load playlist from profile on mount
   useEffect(() => {
-    if (!profileSession?.data.playlistPath || channels.length > 0 || isLoadingPlaylist) {
+    const savedPath = profileSession?.data.playlistPath;
+    
+    // Skip if: no saved path, already loaded, currently loading, OR already have channels
+    if (!savedPath || 
+        lastLoadedPath.current === savedPath || 
+        isLoadingPlaylist || 
+        channels.length > 0) {
       return;
     }
     
-    const savedPath = profileSession.data.playlistPath;
     console.log(`[Playlist] Auto-loading saved playlist: ${savedPath}`);
     loadPlaylistFromPath(savedPath);
-  }, [profileSession?.data.playlistPath, channels.length, isLoadingPlaylist, loadPlaylistFromPath]);
+  }, [profileSession?.data.playlistPath, isLoadingPlaylist, channels.length, loadPlaylistFromPath]);
 
   return {
     playlistPath,

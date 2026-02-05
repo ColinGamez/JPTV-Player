@@ -25,6 +25,9 @@ import {
   MAX_PIN_LENGTH,
 } from '../src/types/profile';
 
+// Constants
+const MAX_CHANNEL_HISTORY = 50; // Limit channel history to prevent unbounded growth
+
 export class ProfileManager {
   private userDataPath: string;
   private profilesPath: string;
@@ -266,6 +269,13 @@ export class ProfileManager {
       ...data,
     };
 
+    // Enforce channel history limit to prevent unbounded growth
+    if (this.activeSession.data.channelHistory && 
+        this.activeSession.data.channelHistory.length > MAX_CHANNEL_HISTORY) {
+      this.activeSession.data.channelHistory = 
+        this.activeSession.data.channelHistory.slice(0, MAX_CHANNEL_HISTORY);
+    }
+
     // Save to disk
     this.saveProfileData(this.activeSession.profile.id, this.activeSession.data);
   }
@@ -357,9 +367,25 @@ export class ProfileManager {
 
   private saveIndex(index: ProfilesIndex): void {
     try {
-      fs.writeFileSync(this.indexPath, JSON.stringify(index, null, 2), 'utf-8');
+      // Atomic write: write to temp file, then rename
+      const tempFile = `${this.indexPath}.tmp`;
+      const content = JSON.stringify(index, null, 2);
+      
+      fs.writeFileSync(tempFile, content, 'utf-8');
+      fs.renameSync(tempFile, this.indexPath);
     } catch (error) {
       console.error('[ProfileManager] Failed to save index:', error);
+      
+      // Clean up temp file if it exists
+      const tempFile = `${this.indexPath}.tmp`;
+      if (fs.existsSync(tempFile)) {
+        try {
+          fs.unlinkSync(tempFile);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
+      }
+      
       throw error;
     }
   }
@@ -391,12 +417,30 @@ export class ProfileManager {
       // Ensure directory exists
       const dir = this.getProfileDataPath(profileId);
       if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+        fs.mkdirSync(dir, { recursive: true});
       }
 
-      fs.writeFileSync(dataFile, JSON.stringify(data, null, 2), 'utf-8');
+      // Atomic write: write to temp file, then rename
+      const tempFile = `${dataFile}.tmp`;
+      const content = JSON.stringify(data, null, 2);
+      
+      fs.writeFileSync(tempFile, content, 'utf-8');
+      
+      // Atomic rename (overwrites existing file)
+      fs.renameSync(tempFile, dataFile);
     } catch (error) {
       console.error(`[ProfileManager] Failed to save data for profile ${profileId}:`, error);
+      
+      // Clean up temp file if it exists
+      const tempFile = `${dataFile}.tmp`;
+      if (fs.existsSync(tempFile)) {
+        try {
+          fs.unlinkSync(tempFile);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
+      }
+      
       throw error;
     }
   }

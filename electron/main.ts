@@ -37,6 +37,7 @@ let activeCommandId: number | null = null;
 let pendingCommand: VlcCommand | null = null;
 let isProcessingCommand = false;
 let isShuttingDown = false;
+let ipcHandlersRegistered = false;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -287,16 +288,17 @@ function createWindow() {
   });
 
   // Initialize VLC player after window is ready
-  mainWindow.webContents.once('did-finish-load', () => {
-    initializeManagers();
+  mainWindow.webContents.once('did-finish-load', async () => {
+    await initializeManagers();
     initializeVlcPlayer();
   });
 }
 
 /**
  * Initialize non-VLC managers (Profile, EPG, Recording)
+ * Returns promise that resolves when critical managers are ready
  */
-function initializeManagers() {
+async function initializeManagers() {
   try {
     // Initialize logger
     logger = new RotatingLogger(logPath);
@@ -307,21 +309,33 @@ function initializeManagers() {
     epgManager = new EpgManager(app.getPath('userData'));
     profileManager = new ProfileManager(app.getPath('userData'));
     
-    // Initialize EPG data (from cache if available)
+    // CRITICAL: Wait for profile manager initialization (creates directories)
+    await profileManager.initialize();
+    
+    // Initialize EPG data (from cache if available) - non-blocking
     epgManager.initialize().catch(err => {
       logger?.error('EPG initialization failed', { error: err });
-    });
-    
-    // Initialize profile system
-    profileManager.initialize().catch(err => {
-      logger?.error('Profile system initialization failed', { error: err });
     });
     
     console.log('[App] Managers initialized successfully');
   } catch (error) {
     console.error('[App] Failed to initialize managers:', error);
     logger?.error('Failed to initialize managers', { error });
+    throw error; // Rethrow to prevent app from continuing with broken state
   }
+}
+
+/**
+ * Register all IPC handlers (idempotent - safe to call multiple times)
+ */
+function registerIpcHandlers() {
+  if (ipcHandlersRegistered) {
+    logger?.warn('IPC handlers already registered, skipping');
+    return;
+  }
+
+  logger?.info('Registering IPC handlers');
+  ipcHandlersRegistered = true;
 }
 
 // Handle fullscreen toggle
@@ -628,6 +642,33 @@ ipcMain.handle('playlist:loadFromPath', async (_event, filePath: string) => {
       parseResult: {
         success: false,
         error: 'Invalid file path'
+      }
+    };
+  }
+
+  // Validate file exists and is readable
+  if (!fs.existsSync(filePath)) {
+    logger?.error('Playlist file not found', { filePath });
+    return {
+      path: filePath,
+      content: '',
+      parseResult: {
+        success: false,
+        error: `File not found: ${filePath}`
+      }
+    };
+  }
+
+  // Validate file extension
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext !== '.m3u' && ext !== '.m3u8') {
+    logger?.warn('Invalid playlist file extension', { filePath, ext });
+    return {
+      path: filePath,
+      content: '',
+      parseResult: {
+        success: false,
+        error: `Invalid file extension: ${ext}. Expected .m3u or .m3u8`
       }
     };
   }
@@ -1565,6 +1606,9 @@ ipcMain.handle('shell:openExternal', async (_, url: string) => {
 });
 
 app.whenReady().then(() => {
+  // Register IPC handlers once
+  registerIpcHandlers();
+  
   // Check for orphaned VLC processes on startup
   cleanupOrphanedVlcProcesses();
   
