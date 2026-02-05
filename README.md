@@ -1,4 +1,4 @@
-# JPTV Player – TV Box Mode
+# JPTV Player – Japanese TV that just works.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-blue?style=flat-square" alt="Windows"/>
