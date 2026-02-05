@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseXmltvFile } from './xmltv-parser';
+import { RotatingLogger } from './logger';
 import type { 
   EpgChannel, 
   EpgProgram, 
@@ -21,10 +22,12 @@ export class EpgManager {
   private cacheFilePath: string;
   private ttl: number;
   private isLoaded = false;
+  private logger: RotatingLogger | null = null;
 
-  constructor(userDataPath: string, ttl: number = EPG_DEFAULT_TTL) {
+  constructor(userDataPath: string, logger?: RotatingLogger, ttl: number = EPG_DEFAULT_TTL) {
     this.cacheFilePath = path.join(userDataPath, 'epg-cache.json');
     this.ttl = ttl;
+    this.logger = logger || null;
   }
 
   /**
@@ -34,7 +37,7 @@ export class EpgManager {
     // Try to load from cache first
     const cached = await this.loadFromCache();
     if (cached) {
-      console.log('[EPG] Loaded from cache:', {
+      this.logger?.info('EPG loaded from cache', {
         channels: this.channels.size,
         totalPrograms: Array.from(this.programs.values()).reduce((sum, p) => sum + p.length, 0)
       });
@@ -42,14 +45,14 @@ export class EpgManager {
       return;
     }
 
-    console.log('[EPG] Cache invalid or not found, waiting for manual load');
+    this.logger?.info('EPG cache invalid or not found, waiting for manual load');
   }
 
   /**
    * Load EPG data from XMLTV file
    */
   async loadFromXmltv(filePath: string): Promise<XmltvParseResult> {
-    console.log('[EPG] Parsing XMLTV file:', filePath);
+    this.logger?.info('Parsing XMLTV file', { path: filePath });
     
     const result = await parseXmltvFile(filePath);
     
@@ -58,7 +61,7 @@ export class EpgManager {
       this.programs = result.programs;
       this.isLoaded = true;
 
-      console.log('[EPG] Loaded successfully:', {
+      this.logger?.info('EPG loaded successfully', {
         channels: result.channelCount,
         programs: result.programCount,
         parseTime: `${result.parseTime}ms`
@@ -67,7 +70,7 @@ export class EpgManager {
       // Save to cache
       await this.saveToCache();
     } else {
-      console.error('[EPG] Failed to parse XMLTV:', result.error);
+      this.logger?.error('Failed to parse XMLTV', { error: result.error });
     }
 
     return result;
@@ -234,9 +237,9 @@ export class EpgManager {
         'utf-8'
       );
 
-      console.log('[EPG] Cache saved to:', this.cacheFilePath);
+      this.logger?.info('EPG cache saved', { path: this.cacheFilePath });
     } catch (error) {
-      console.error('[EPG] Failed to save cache:', error);
+      this.logger?.error('Failed to save EPG cache', { error });
     }
   }
 
@@ -254,14 +257,14 @@ export class EpgManager {
 
       // Validate cache version
       if (data.version !== EPG_CACHE_VERSION) {
-        console.log('[EPG] Cache version mismatch, ignoring');
+        this.logger?.info('EPG cache version mismatch, ignoring', { expected: EPG_CACHE_VERSION, found: data.version });
         return false;
       }
 
       // Check TTL
       const age = Date.now() - data.generatedAt;
       if (age > data.ttl) {
-        console.log('[EPG] Cache expired, ignoring');
+        this.logger?.info('EPG cache expired, ignoring', { ageMs: age, ttlMs: data.ttl });
         return false;
       }
 
@@ -271,7 +274,7 @@ export class EpgManager {
 
       return true;
     } catch (error) {
-      console.error('[EPG] Failed to load cache:', error);
+      this.logger?.error('Failed to load EPG cache', { error });
       return false;
     }
   }

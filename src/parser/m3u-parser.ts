@@ -1,11 +1,31 @@
 import type { Channel, ParserResult, SkipReason } from '../types/channel';
 import * as crypto from 'crypto';
 
+// Constants
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 /**
  * Parse M3U/M3U8 playlist content into structured channel data
  */
 export function parseM3U(content: string, debug = false): ParserResult {
   try {
+    // Validate input
+    if (!content || typeof content !== 'string') {
+      return {
+        success: false,
+        error: 'Invalid input: content must be a non-empty string'
+      };
+    }
+
+    // Check file size (prevent DoS from huge files)
+    if (content.length > MAX_FILE_SIZE_BYTES) {
+      return {
+        success: false,
+        error: `File too large: ${(content.length / 1024 / 1024).toFixed(1)}MB exceeds ${MAX_FILE_SIZE_MB}MB limit`
+      };
+    }
+
     const lines = content.split(/\r?\n/).map(line => line.trim());
     
     if (lines.length === 0 || !lines[0].startsWith('#EXTM3U')) {
@@ -61,6 +81,14 @@ export function parseM3U(content: string, debug = false): ParserResult {
     }
 
     const categories = buildCategories(channels);
+
+    // Validate we got at least one channel
+    if (channels.length === 0) {
+      return {
+        success: false,
+        error: 'No valid channels found in playlist'
+      };
+    }
 
     return {
       success: true,
