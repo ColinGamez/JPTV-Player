@@ -186,7 +186,7 @@ function loadSettings(): AppSettings {
       return { ...defaultSettings, ...JSON.parse(data) };
     }
   } catch (error) {
-    console.error('Failed to load settings:', error);
+    logger?.error('Failed to load settings', { error });
   }
   return defaultSettings;
 }
@@ -195,7 +195,7 @@ function saveSettings(settings: AppSettings): void {
   try {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
   } catch (error) {
-    console.error('Failed to save settings:', error);
+    logger?.error('Failed to save settings', { error });
   }
 }
 
@@ -312,14 +312,19 @@ async function initializeManagers() {
     // CRITICAL: Wait for profile manager initialization (creates directories)
     await profileManager.initialize();
     
-    // Initialize EPG data (from cache if available) - non-blocking
-    epgManager.initialize().catch(err => {
-      logger?.error('EPG initialization failed', { error: err });
+    // Initialize EPG data (from cache if available) - non-blocking with timeout
+    const EPG_INIT_TIMEOUT = 10000; // 10 seconds max for cache load
+    Promise.race([
+      epgManager.initialize(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('EPG initialization timeout')), EPG_INIT_TIMEOUT)
+      )
+    ]).catch(err => {
+      logger?.error('EPG initialization failed or timed out', { error: err.message });
     });
     
-    console.log('[App] Managers initialized successfully');
+    logger?.info('Managers initialized successfully');
   } catch (error) {
-    console.error('[App] Failed to initialize managers:', error);
     logger?.error('Failed to initialize managers', { error });
     throw error; // Rethrow to prevent app from continuing with broken state
   }
@@ -371,11 +376,8 @@ function initializeVlcPlayer() {
       if (fs.existsSync(vlcPath)) {
         process.env.VLC_PLUGIN_PATH = pluginPath;
         logger?.info('Using bundled VLC runtime', { vlcPath, pluginPath });
-        console.log('[VLC] Using bundled VLC runtime:', vlcPath);
       } else {
         logger?.warn('Bundled VLC not found, falling back to system VLC', { vlcPath });
-        console.warn('[VLC] Bundled VLC not found, falling back to system VLC', { vlcPath });
-        console.warn('[VLC] Bundled VLC not found at:', vlcPath);
       }
     }
 
@@ -384,41 +386,42 @@ function initializeVlcPlayer() {
     
     if (!fs.existsSync(addonPath)) {
       const error = 'Native addon not found';
-      logger?.error(error, { path: addonPath });
-      console.error('[VLC] Native addon not found', { path: addonPath });
-      console.error('[VLC] Native addon not found at:', addonPath);
-      console.error('[VLC] Run "npm run build:native" to compile the addon');
+      logger?.error(error, { path: addonPath, hint: 'Run npm run build:native' });
       return;
     }
 
     vlcPlayer = require(addonPath);
 
-    if (mainWindow) {
-      // Get HWND from BrowserWindow
-      const hwnd = mainWindow.getNativeWindowHandle();
-      const hwndValue = hwnd.readBigInt64LE(0);
+    // CRITICAL: Ensure mainWindow is ready before VLC initialization
+    if (!mainWindow) {
+      const error = 'Cannot initialize VLC: mainWindow not created yet';
+      logger?.error(error);
+      throw new Error(error); // Fail-fast: VLC requires window handle
+    }
+
+    // Get HWND from BrowserWindow
+    const hwnd = mainWindow.getNativeWindowHandle();
+    const hwndValue = hwnd.readBigInt64LE(0);
+    
+    const success = vlcPlayer.initialize(hwndValue);
+    if (success) {
+      logger?.info('VLC player initialized successfully');
       
-      const success = vlcPlayer.initialize(hwndValue);
-      if (success) {
-        logger?.info('Player initialized successfully');
-        console.log('[VLC] Player initialized successfully');
-        
-        // Initialize VLC-dependent managers
-        healthScorer = new StreamHealthScorer();
-        fallbackManager = new StreamFallbackManager(logger!);
-        
-        startFreezeDetection();
-        startHealthMonitoring();
-      } else {
-        logger?.error('Failed to initialize player');
-        console.error('[VLC] Failed to initialize player');
-      }
+      // Initialize VLC-dependent managers
+      healthScorer = new StreamHealthScorer();
+      fallbackManager = new StreamFallbackManager(logger!);
+      
+      startFreezeDetection();
+      startHealthMonitoring();
+    } else {
+      const error = 'VLC initialization returned false';
+      logger?.error(error);
+      throw new Error(error); // Fail-fast: VLC must initialize
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    logger?.error('Failed to load native addon', { error: errorMsg });
-    console.error('[VLC] Failed to load native addon:', error);
-    console.error('[VLC] Make sure VLC is installed and the addon is compiled');
+    logger?.error('Failed to load VLC native addon', { error: errorMsg, hint: 'Ensure VLC is installed and addon is compiled' });
+    throw error; // Fail-fast: VLC is critical for app functionality
   }
 }
 
@@ -573,7 +576,7 @@ function parsePlaylistFromPath(filePath: string) {
     const parseResult: ParserResult = parseM3U(content);
     
     if (!parseResult.success) {
-      console.error('[Playlist] Failed to parse:', parseResult.error);
+      logger?.error('Failed to parse playlist', { path: filePath, error: parseResult.error });
       return {
         path: filePath,
         content,
@@ -601,7 +604,8 @@ function parsePlaylistFromPath(filePath: string) {
       }
     };
   } catch (error) {
-    console.error('[Playlist] Failed to read file:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger?.error('Failed to read playlist file', { path: filePath, error: errorMessage });
     return {
       path: filePath,
       content: '',
@@ -757,7 +761,6 @@ ipcMain.handle('player:play', async (_event, url: string) => {
     return { success: isPlaying, error: isPlaying ? undefined : 'Failed to play stream' };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown playback error';
-    logger?.error('Play error', { url, error: errorMsg });
     console.error('[VLC] Play error:', error);
     
     // Try to recover
@@ -798,7 +801,6 @@ ipcMain.handle('player:stop', async () => {
     return { success: true };
   } catch (error) {
     logger?.error('Stop error', { error });
-    console.error('[VLC] Stop error:', error);
     return { success: false };
   }
 });
@@ -819,7 +821,6 @@ ipcMain.handle('player:pause', async () => {
     return { success: true };
   } catch (error) {
     logger?.error('Pause error', { error });
-    console.error('[VLC] Pause error:', error);
     return { success: false };
   }
 });
@@ -840,7 +841,6 @@ ipcMain.handle('player:resume', async () => {
     return { success: true };
   } catch (error) {
     logger?.error('Resume error', { error });
-    console.error('[VLC] Resume error:', error);
     return { success: false };
   }
 });
@@ -855,7 +855,6 @@ ipcMain.handle('player:setVolume', async (_event, volume: number) => {
     return { success };
   } catch (error) {
     logger?.error('SetVolume error', { volume, error });
-    console.error('[VLC] SetVolume error:', error);
     return { success: false };
   }
 });
@@ -870,7 +869,6 @@ ipcMain.handle('player:getVolume', async () => {
     return { volume };
   } catch (error) {
     logger?.error('GetVolume error', { error });
-    console.error('[VLC] GetVolume error:', error);
     return { volume: 50 };
   }
 });
@@ -885,7 +883,6 @@ ipcMain.handle('player:getState', async () => {
     return { state };
   } catch (error) {
     logger?.error('GetState error', { error });
-    console.error('[VLC] GetState error:', error);
     return { state: 'error' };
   }
 });
@@ -900,7 +897,6 @@ ipcMain.handle('player:isPlaying', async () => {
     return { playing };
   } catch (error) {
     logger?.error('IsPlaying error', { error });
-    console.error('[VLC] IsPlaying error:', error);
     return { playing: false };
   }
 });
@@ -1577,21 +1573,37 @@ function forceStopVlc(): void {
 /**
  * Check for and cleanup orphaned VLC processes
  */
+/**
+ * Cleanup orphaned VLC processes from previous app crashes
+ * CRITICAL: Kills vlc.exe processes to prevent resource locks and playback failures
+ */
 function cleanupOrphanedVlcProcesses(): void {
   if (process.platform !== 'win32') return;
 
   try {
     const { execSync } = require('child_process');
-    // Check for VLC processes not owned by current app
+    
+    // Find VLC processes
     const result = execSync('tasklist /FI "IMAGENAME eq vlc.exe" /FO CSV /NH', { encoding: 'utf8' });
     
     if (result.includes('vlc.exe')) {
-      logger?.warn('Found potentially orphaned VLC processes', { processes: result.trim() });
-      // Note: We don't force-kill here as they might be legitimate VLC instances
-      // This is logged for diagnostic purposes
+      logger?.warn('Found orphaned VLC processes, attempting cleanup', { processes: result.trim() });
+      
+      try {
+        // Force kill ALL vlc.exe processes
+        // /F = force terminate, /IM = image name
+        execSync('taskkill /F /IM vlc.exe', { encoding: 'utf8', timeout: 5000 });
+        logger?.info('Successfully cleaned up orphaned VLC processes');
+      } catch (killError) {
+        // Some VLC processes may have already exited or are protected
+        logger?.warn('Failed to kill some VLC processes', { error: killError });
+      }
+    } else {
+      logger?.debug('No orphaned VLC processes found');
     }
   } catch (error) {
-    // Silently fail - this is a best-effort cleanup check
+    // tasklist command failed - log but don't crash
+    logger?.error('Failed to check for orphaned VLC processes', { error });
   }
 }
 
