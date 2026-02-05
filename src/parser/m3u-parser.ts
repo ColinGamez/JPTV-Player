@@ -1,4 +1,4 @@
-import type { Channel, ParsedPlaylist, ParserResult, SkipReason } from '../types/channel';
+import type { Channel, ParserResult, SkipReason } from '../types/channel';
 import * as crypto from 'crypto';
 
 /**
