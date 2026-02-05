@@ -666,46 +666,42 @@ ipcMain.handle('dialog:openPlaylist', async () => {
 
 // Load playlist from saved path (for profile restoration)
 ipcMain.handle('playlist:loadFromPath', async (_event, filePath: string) => {
+  // Input validation
   if (!filePath || typeof filePath !== 'string') {
+    logger?.warn('Invalid playlist path', { path: filePath });
     return {
       path: '',
       content: '',
-      parseResult: {
-        success: false,
-        error: 'Invalid file path'
-      }
+      parseResult: { success: false, error: 'Invalid file path' }
     };
   }
 
-  // Validate file exists and is readable
-  if (!fs.existsSync(filePath)) {
-    logger?.error('Playlist file not found', { filePath });
+  // Sanitize path to prevent directory traversal
+  const normalizedPath = path.normalize(filePath).replace(/^(\.\.[\\\/])+/, '');
+  
+  // Validate file exists
+  if (!fs.existsSync(normalizedPath)) {
+    logger?.warn('Playlist file not found', { path: normalizedPath });
     return {
-      path: filePath,
+      path: normalizedPath,
       content: '',
-      parseResult: {
-        success: false,
-        error: `File not found: ${filePath}`
-      }
+      parseResult: { success: false, error: 'File not found' }
     };
   }
 
   // Validate file extension
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = path.extname(normalizedPath).toLowerCase();
   if (ext !== '.m3u' && ext !== '.m3u8') {
-    logger?.warn('Invalid playlist file extension', { filePath, ext });
+    logger?.warn('Invalid playlist file extension', { path: normalizedPath, ext });
     return {
-      path: filePath,
+      path: normalizedPath,
       content: '',
-      parseResult: {
-        success: false,
-        error: `Invalid file extension: ${ext}. Expected .m3u or .m3u8`
-      }
+      parseResult: { success: false, error: 'Invalid file type (must be .m3u or .m3u8)' }
     };
   }
 
-  logger?.info('Loading playlist from saved path', { filePath });
-  return parsePlaylistFromPath(filePath);
+  logger?.info('Loading playlist from saved path', { path: normalizedPath });
+  return parsePlaylistFromPath(normalizedPath);
 });
 
 ipcMain.handle('settings:load', () => {
