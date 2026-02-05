@@ -288,8 +288,40 @@ function createWindow() {
 
   // Initialize VLC player after window is ready
   mainWindow.webContents.once('did-finish-load', () => {
+    initializeManagers();
     initializeVlcPlayer();
   });
+}
+
+/**
+ * Initialize non-VLC managers (Profile, EPG, Recording)
+ */
+function initializeManagers() {
+  try {
+    // Initialize logger
+    logger = new RotatingLogger(logPath);
+    logger.info('Initializing application managers');
+
+    // Initialize managers that don't depend on VLC
+    recordingManager = new RecordingManager(recordingsPath, logger);
+    epgManager = new EpgManager(app.getPath('userData'));
+    profileManager = new ProfileManager(app.getPath('userData'));
+    
+    // Initialize EPG data (from cache if available)
+    epgManager.initialize().catch(err => {
+      logger?.error('EPG initialization failed', { error: err });
+    });
+    
+    // Initialize profile system
+    profileManager.initialize().catch(err => {
+      logger?.error('Profile system initialization failed', { error: err });
+    });
+    
+    console.log('[App] Managers initialized successfully');
+  } catch (error) {
+    console.error('[App] Failed to initialize managers:', error);
+    logger?.error('Failed to initialize managers', { error });
+  }
 }
 
 // Handle fullscreen toggle
@@ -315,9 +347,7 @@ ipcMain.handle('window:isFullscreen', async () => {
  */
 function initializeVlcPlayer() {
   try {
-    // Initialize logger
-    logger = new RotatingLogger(logPath);
-    logger.info('Initializing VLC player');
+    logger?.info('Initializing VLC player');
 
     // Set VLC plugin path for bundled runtime in production
     if (!isDev) {
@@ -330,6 +360,7 @@ function initializeVlcPlayer() {
         console.log('[VLC] Using bundled VLC runtime:', vlcPath);
       } else {
         logger?.warn('Bundled VLC not found, falling back to system VLC', { vlcPath });
+        console.warn('[VLC] Bundled VLC not found, falling back to system VLC', { vlcPath });
         console.warn('[VLC] Bundled VLC not found at:', vlcPath);
       }
     }
@@ -340,6 +371,7 @@ function initializeVlcPlayer() {
     if (!fs.existsSync(addonPath)) {
       const error = 'Native addon not found';
       logger?.error(error, { path: addonPath });
+      console.error('[VLC] Native addon not found', { path: addonPath });
       console.error('[VLC] Native addon not found at:', addonPath);
       console.error('[VLC] Run "npm run build:native" to compile the addon');
       return;
@@ -357,22 +389,9 @@ function initializeVlcPlayer() {
         logger?.info('Player initialized successfully');
         console.log('[VLC] Player initialized successfully');
         
-        // Initialize managers
+        // Initialize VLC-dependent managers
         healthScorer = new StreamHealthScorer();
         fallbackManager = new StreamFallbackManager(logger!);
-        recordingManager = new RecordingManager(recordingsPath, logger!);
-        epgManager = new EpgManager(app.getPath('userData'));
-        profileManager = new ProfileManager(app.getPath('userData'));
-        
-        // Initialize EPG data (from cache if available)
-        epgManager.initialize().catch(err => {
-          logger?.error('EPG initialization failed', { error: err });
-        });
-        
-        // Initialize profile system
-        profileManager.initialize().catch(err => {
-          logger?.error('Profile system initialization failed', { error: err });
-        });
         
         startFreezeDetection();
         startHealthMonitoring();
