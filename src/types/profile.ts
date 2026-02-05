@@ -9,7 +9,7 @@ export interface Profile {
   name: string;               // Display name
   avatar?: string;            // Optional avatar emoji/icon
   hasPin: boolean;            // Whether profile requires PIN
-  pinHash?: string;           // Bcrypt hash of PIN (never plaintext)
+  pinHash?: string;           // PBKDF2 hash of PIN (never plaintext)
   createdAt: number;          // Unix timestamp
   lastLogin?: number;         // Unix timestamp of last login
 }
@@ -87,4 +87,3 @@ export interface ProfileSession {
 export const PROFILES_INDEX_VERSION = '1.0';
 export const MIN_PIN_LENGTH = 4;
 export const MAX_PIN_LENGTH = 6;
-export const BCRYPT_SALT_ROUNDS = 10;

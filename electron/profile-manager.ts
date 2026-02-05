@@ -3,14 +3,14 @@
  * 
  * Manages user profiles with optional PIN security for offline IPTV app.
  * - Stores profiles in userData/profiles/
- * - Supports PIN authentication with bcrypt
+ * - Supports PIN authentication with PBKDF2 hashing
  * - Isolated data per profile
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import type {
   Profile,
   ProfileData,
@@ -23,7 +23,6 @@ import {
   PROFILES_INDEX_VERSION,
   MIN_PIN_LENGTH,
   MAX_PIN_LENGTH,
-  BCRYPT_SALT_ROUNDS,
 } from '../src/types/profile';
 
 export class ProfileManager {
@@ -99,7 +98,7 @@ export class ProfileManager {
 
     // Hash PIN if provided
     if (request.pin) {
-      profile.pinHash = await bcrypt.hash(request.pin, BCRYPT_SALT_ROUNDS);
+      profile.pinHash = this.hashPin(request.pin);
     }
 
     // Add to index
@@ -198,7 +197,7 @@ export class ProfileManager {
         throw new Error('Profile PIN hash missing');
       }
 
-      const pinValid = await bcrypt.compare(request.pin, profile.pinHash);
+      const pinValid = this.comparePin(request.pin, profile.pinHash);
       if (!pinValid) {
         console.warn(`[ProfileManager] Invalid PIN attempt for profile: ${profile.name}`);
         throw new Error('Invalid PIN');
@@ -298,7 +297,7 @@ export class ProfileManager {
     }
 
     try {
-      const isValid = await bcrypt.compare(pin, profile.pinHash);
+      const isValid = this.comparePin(pin, profile.pinHash);
       console.log(`[ProfileManager] PIN verification for ${profile.name}: ${isValid ? 'success' : 'failed'}`);
       return isValid;
     } catch (error) {
@@ -308,6 +307,19 @@ export class ProfileManager {
   }
 
   // ========== Private Methods ==========
+
+  private hashPin(pin: string): string {
+    // Use PBKDF2 with SHA-256 for secure PIN hashing
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(pin, salt, 10000, 64, 'sha256').toString('hex');
+    return `${salt}:${hash}`;
+  }
+
+  private comparePin(pin: string, storedHash: string): boolean {
+    const [salt, hash] = storedHash.split(':');
+    const verifyHash = crypto.pbkdf2Sync(pin, salt, 10000, 64, 'sha256').toString('hex');
+    return hash === verifyHash;
+  }
 
   private validatePin(pin: string): void {
     // Must be numeric
