@@ -13,7 +13,6 @@
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "build:native": "node-gyp rebuild",
-    "prebuild": "npm run build:native",
     "test:parser": "tsc -p tsconfig.test.json && node dist-test/parser/parser-tests.js",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",
@@ -23,6 +22,8 @@
     "appId": "com.jptv.iptv-player",
     "productName": "JPTV Player",
     "copyright": "Copyright © 2026 JPTV",
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -30,29 +31,21 @@
     "files": [
       "dist/**/*",
       "package.json",
-      "node_modules/node-addon-api/**/*",
-      "build/Release/vlc_player.node"
-    ],
-    "extraResources": [
-      {
-        "from": "C:/Program Files/VideoLAN/VLC",
-        "to": "vlc",
-        "filter": [
-          "libvlc.dll",
-          "libvlccore.dll",
-          "plugins/**/*"
-        ]
-      }
+      "node_modules/node-addon-api/**/*"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico",
@@ -75,7 +68,6 @@
     }
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
     "node-addon-api": "^7.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -90,13 +82,13 @@
     "@types/uuid": "^9.0.7",
     "@types/xml2js": "^0.4.14",
     "@vitejs/plugin-react": "^4.2.1",
-    "concurrently": "^8.2.2",
+    "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
     "electron": "^28.1.3",
     "electron-builder": "^24.9.1",
-    "node-gyp": "^10.0.1",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.11",
+    "node-gyp": "^10.1.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
     "wait-on": "^7.2.0"
   }
 }

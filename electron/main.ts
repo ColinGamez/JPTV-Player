@@ -1566,10 +1566,10 @@ app.on('before-quit', (event) => {
     }
   }
 
-  // 4. Flush logger
-  if (logger) {
+  // 4. Flush logger (if method exists)
+  if (logger && typeof (logger as any).close === 'function') {
     logger.info('Clean shutdown complete');
-    logger.close();
+    (logger as any).close();
   }
 
   // 5. Now actually quit
