@@ -24,6 +24,7 @@ import {
   MIN_PIN_LENGTH,
   MAX_PIN_LENGTH,
 } from '../src/types/profile';
+import { RotatingLogger } from './logger';
 
 // Constants
 const MAX_CHANNEL_HISTORY = 50; // Limit channel history to prevent unbounded growth
@@ -33,11 +34,13 @@ export class ProfileManager {
   private profilesPath: string;
   private indexPath: string;
   private activeSession: ProfileSession | null = null;
+  private logger: RotatingLogger | null = null;
 
-  constructor(userDataPath: string) {
+  constructor(userDataPath: string, logger?: RotatingLogger) {
     this.userDataPath = userDataPath;
     this.profilesPath = path.join(userDataPath, 'profiles');
     this.indexPath = path.join(this.profilesPath, 'profiles.json');
+    this.logger = logger || null;
   }
 
   /**
@@ -49,7 +52,7 @@ export class ProfileManager {
       // Create profiles directory
       if (!fs.existsSync(this.profilesPath)) {
         fs.mkdirSync(this.profilesPath, { recursive: true });
-        console.log('[ProfileManager] Created profiles directory');
+        this.logger?.info('Created profiles directory', { path: this.profilesPath });
       }
 
       // Create index if not exists
@@ -59,12 +62,12 @@ export class ProfileManager {
           profiles: [],
         };
         this.saveIndex(index);
-        console.log('[ProfileManager] Created profiles index');
+        this.logger?.info('Created profiles index', { path: this.indexPath });
       }
 
-      console.log('[ProfileManager] Initialized');
+      this.logger?.info('ProfileManager initialized');
     } catch (error) {
-      console.error('[ProfileManager] Initialization failed:', error);
+      this.logger?.error('ProfileManager initialization failed', { error });
       throw error;
     }
   }
@@ -164,7 +167,7 @@ export class ProfileManager {
       fs.rmSync(profileDir, { recursive: true, force: true });
     }
 
-    console.log(`[ProfileManager] Deleted profile: ${profile.name} (${profileId})`);
+    this.logger?.info('Deleted profile', { name: profile.name, id: profileId });
   }
 
   /**
@@ -225,7 +228,7 @@ export class ProfileManager {
       loggedInAt: Date.now(),
     };
 
-    console.log(`[ProfileManager] Logged in: ${profile.name} (${profile.id})`);
+    this.logger?.info('User logged in', { profileName: profile.name, profileId: profile.id });
     return this.activeSession;
   }
 
@@ -286,7 +289,7 @@ export class ProfileManager {
   saveActiveProfile(): void {
     if (this.activeSession) {
       this.saveProfileData(this.activeSession.profile.id, this.activeSession.data);
-      console.log(`[ProfileManager] Saved profile data: ${this.activeSession.profile.name}`);
+      this.logger?.info('Saved profile data', { profileName: this.activeSession.profile.name });
     }
   }
 
@@ -311,7 +314,7 @@ export class ProfileManager {
       console.log(`[ProfileManager] PIN verification for ${profile.name}: ${isValid ? 'success' : 'failed'}`);
       return isValid;
     } catch (error) {
-      console.error('[ProfileManager] PIN verification error:', error);
+      this.logger?.error('PIN verification error', { profileId, error });
       return false;
     }
   }
@@ -399,7 +402,7 @@ export class ProfileManager {
         return JSON.parse(content);
       }
     } catch (error) {
-      console.error(`[ProfileManager] Failed to load data for profile ${profileId}:`, error);
+      this.logger?.error('Failed to load profile data', { profileId, error });
     }
 
     // Return default data
@@ -429,7 +432,7 @@ export class ProfileManager {
       // Atomic rename (overwrites existing file)
       fs.renameSync(tempFile, dataFile);
     } catch (error) {
-      console.error(`[ProfileManager] Failed to save data for profile ${profileId}:`, error);
+      this.logger?.error('Failed to save profile data', { profileId, error });
       
       // Clean up temp file if it exists
       const tempFile = `${dataFile}.tmp`;

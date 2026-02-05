@@ -307,7 +307,7 @@ async function initializeManagers() {
     // Initialize managers that don't depend on VLC
     recordingManager = new RecordingManager(recordingsPath, logger);
     epgManager = new EpgManager(app.getPath('userData'));
-    profileManager = new ProfileManager(app.getPath('userData'));
+    profileManager = new ProfileManager(app.getPath('userData'), logger);
     
     // CRITICAL: Wait for profile manager initialization (creates directories)
     await profileManager.initialize();
