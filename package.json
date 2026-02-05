@@ -2,7 +2,7 @@
   "name": "jptv-player",
   "version": "1.0.0",
   "description": "Japanese IPTV Player - TV-first UI",
-  "main": "dist/main.js",
+  "main": "dist/electron/main.js",
   "author": "JPTV",
   "license": "MIT",
   "scripts": {
@@ -24,6 +24,7 @@
     "copyright": "Copyright © 2026 JPTV",
     "buildDependenciesFromSource": false,
     "nodeGypRebuild": false,
+    "npmRebuild": false,
     "directories": {
       "output": "release",
       "buildResources": "assets"
@@ -34,6 +35,7 @@
       "node_modules/node-addon-api/**/*"
     ],
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",
@@ -48,7 +50,6 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
@@ -58,9 +59,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "JPTV Player",
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico",
-      "installerHeaderIcon": "assets/icon.ico",
       "deleteAppDataOnUninstall": false
     },
     "portable": {
@@ -84,11 +82,15 @@
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
-    "electron": "^28.1.3",
-    "electron-builder": "^24.9.1",
-    "node-gyp": "^10.1.0",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0",
+    "node-gyp": "^12.2.0",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10",
+    "vite": "^7.3.1",
     "wait-on": "^7.2.0"
+  },
+  "overrides": {
+    "rimraf": "^6.0.1",
+    "glob": "13.0.1"
   }
 }
