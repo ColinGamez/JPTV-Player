@@ -67,6 +67,33 @@ if (!isDev) {
   console.log('[Crash Reporter] Initialized. Dumps stored at:', crashDumpPath);
 }
 
+/**
+ * CRITICAL: Global error handlers for process-level failures
+ * Prevents silent crashes and logs all unhandled errors
+ */
+process.on('uncaughtException', (error: Error) => {
+  const errorMsg = `UNCAUGHT EXCEPTION: ${error.message}\nStack: ${error.stack}`;
+  console.error('[FATAL]', errorMsg);
+  logger?.error('Uncaught exception', { error: error.message, stack: error.stack });
+  
+  // Don't exit immediately - give time for logging
+  setTimeout(() => {
+    app.quit();
+    process.exit(1);
+  }, 1000);
+});
+
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  const errorMsg = typeof reason === 'object' && reason !== null && 'message' in reason
+    ? (reason as Error).message
+    : String(reason);
+  
+  console.error('[FATAL] Unhandled Promise Rejection:', errorMsg);
+  logger?.error('Unhandled promise rejection', { reason: errorMsg });
+  
+  // Don't crash on unhandled rejection, but log it prominently
+});
+
 const MAX_RESTART_ATTEMPTS = 1;
 const FREEZE_CHECK_INTERVAL = 5000; // Check every 5 seconds
 const FREEZE_THRESHOLD = 10; // Consider frozen after 10 seconds
