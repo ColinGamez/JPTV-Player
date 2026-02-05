@@ -3,6 +3,7 @@ import type { AppSettings } from '../src/types/electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   openPlaylist: () => ipcRenderer.invoke('dialog:openPlaylist'),
+  loadPlaylistFromPath: (filePath: string) => ipcRenderer.invoke('playlist:loadFromPath', filePath),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: (settings: AppSettings) => ipcRenderer.invoke('settings:save', settings),
@@ -106,6 +107,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 // Also expose as 'electron' for convenience
 contextBridge.exposeInMainWorld('electron', {
   openPlaylist: () => ipcRenderer.invoke('dialog:openPlaylist'),
+  loadPlaylistFromPath: (filePath: string) => ipcRenderer.invoke('playlist:loadFromPath', filePath),
   readFile: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: (settings: AppSettings) => ipcRenderer.invoke('settings:save', settings),

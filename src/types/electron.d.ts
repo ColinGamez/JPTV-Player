@@ -62,6 +62,7 @@ export interface RecordingInfo {
 
 export interface ElectronAPI {
   openPlaylist: () => Promise<PlaylistFile | null>;
+  loadPlaylistFromPath: (filePath: string) => Promise<PlaylistFile>;
   readFile: (filePath: string) => Promise<string>;
   loadSettings: () => Promise<AppSettings>;
   saveSettings: (settings: AppSettings) => Promise<boolean>;

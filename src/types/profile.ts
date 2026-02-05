@@ -22,6 +22,7 @@ export interface ProfileData {
   lastChannelIndex?: number;
   lastCategory?: string;
   volume?: number;                // Volume level (0-100)
+  playlistPath?: string;          // Path to loaded M3U playlist file
   audioNormalizationSettings?: {
     enabled: boolean;
     targetLevel: number;          // Target audio level in dB (LUFS)

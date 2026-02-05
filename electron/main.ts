@@ -552,29 +552,14 @@ async function safeRecreatePlayer(): Promise<boolean> {
   }
 }
 
-// IPC Handlers
-ipcMain.handle('dialog:openPlaylist', async () => {
-  if (!mainWindow) return null;
-  
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: 'Playlist Files', extensions: ['m3u', 'm3u8'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  });
-
-  if (result.canceled || result.filePaths.length === 0) {
-    return null;
-  }
-
-  const filePath = result.filePaths[0];
+// Helper function to parse playlist from file path
+function parsePlaylistFromPath(filePath: string) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     const parseResult: ParserResult = parseM3U(content);
     
     if (!parseResult.success) {
-      console.error('Failed to parse playlist:', parseResult.error);
+      console.error('[Playlist] Failed to parse:', parseResult.error);
       return {
         path: filePath,
         content,
@@ -602,7 +587,7 @@ ipcMain.handle('dialog:openPlaylist', async () => {
       }
     };
   } catch (error) {
-    console.error('Failed to read playlist:', error);
+    console.error('[Playlist] Failed to read file:', error);
     return {
       path: filePath,
       content: '',
@@ -612,6 +597,43 @@ ipcMain.handle('dialog:openPlaylist', async () => {
       }
     };
   }
+}
+
+// IPC Handlers
+ipcMain.handle('dialog:openPlaylist', async () => {
+  if (!mainWindow) return null;
+  
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Playlist Files', extensions: ['m3u', 'm3u8'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  return parsePlaylistFromPath(filePath);
+});
+
+// Load playlist from saved path (for profile restoration)
+ipcMain.handle('playlist:loadFromPath', async (_event, filePath: string) => {
+  if (!filePath || typeof filePath !== 'string') {
+    return {
+      path: '',
+      content: '',
+      parseResult: {
+        success: false,
+        error: 'Invalid file path'
+      }
+    };
+  }
+
+  logger?.info('Loading playlist from saved path', { filePath });
+  return parsePlaylistFromPath(filePath);
 });
 
 ipcMain.handle('settings:load', () => {

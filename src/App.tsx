@@ -59,7 +59,10 @@ function App({ profileSession }: AppProps) {
   const navigationThrottle = 100; // ms between navigation events
 
   const { settings, updateSetting, toggleFavorite, updateProfileData, isElectron } = useProfileSettings(profileSession);
-  const { openPlaylist, playlistPath, channels, categories, parseError } = usePlaylist();
+  const { openPlaylist, playlistPath, channels, categories, parseError } = usePlaylist({ 
+    profileSession, 
+    updateProfileData 
+  });
   const { playbackInfo, updateState, clearError } = usePlaybackState();
   const { addToHistory, getPreviousChannel } = useChannelHistory(settings, updateSetting);
   const { nowNext, channels: epgChannels, stats, loading: epgLoading, loadXmltvFile, refreshNowNext } = useEpgData();
