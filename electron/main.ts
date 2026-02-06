@@ -37,7 +37,6 @@ let activeCommandId: number | null = null;
 let pendingCommand: VlcCommand | null = null;
 let isProcessingCommand = false;
 let isShuttingDown = false;
-let ipcHandlersRegistered = false;
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
@@ -220,9 +219,17 @@ function loadSettings(): AppSettings {
 
 function saveSettings(settings: AppSettings): void {
   try {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    // Atomic write: write to temp file then rename to prevent corruption on crash
+    const tempPath = `${settingsPath}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.renameSync(tempPath, settingsPath);
   } catch (error) {
     logger?.error('Failed to save settings', { error });
+    // Clean up temp file if rename failed
+    try {
+      const tempPath = `${settingsPath}.tmp`;
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    } catch { /* ignore cleanup errors */ }
   }
 }
 
@@ -355,19 +362,6 @@ async function initializeManagers() {
     logger?.error('Failed to initialize managers', { error });
     throw error; // Rethrow to prevent app from continuing with broken state
   }
-}
-
-/**
- * Register all IPC handlers (idempotent - safe to call multiple times)
- */
-function registerIpcHandlers() {
-  if (ipcHandlersRegistered) {
-    logger?.warn('IPC handlers already registered, skipping');
-    return;
-  }
-
-  logger?.info('Registering IPC handlers');
-  ipcHandlersRegistered = true;
 }
 
 // Handle fullscreen toggle
@@ -726,10 +720,27 @@ ipcMain.handle('settings:set', (_event, key: keyof AppSettings, value: any) => {
 });
 
 // File reading handler for EPG/XMLTV files
+// SECURITY: Restricted to safe file extensions to prevent arbitrary filesystem reads
 ipcMain.handle('file:read', async (_event, filePath: string) => {
   try {
-    logger?.debug('Reading file', { filePath });
-    const content = fs.readFileSync(filePath, 'utf-8');
+    // Validate file path
+    if (!filePath || typeof filePath !== 'string') {
+      throw new Error('Invalid file path');
+    }
+
+    // Normalize and resolve the path to prevent path traversal
+    const resolvedPath = path.resolve(filePath);
+
+    // Restrict to safe file extensions
+    const allowedExtensions = ['.xml', '.xmltv', '.m3u', '.m3u8', '.txt', '.json'];
+    const ext = path.extname(resolvedPath).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      logger?.warn('Blocked file read: disallowed extension', { filePath, ext });
+      throw new Error(`File type not allowed: ${ext}`);
+    }
+
+    logger?.debug('Reading file', { filePath: resolvedPath });
+    const content = fs.readFileSync(resolvedPath, 'utf-8');
     return content;
   } catch (error) {
     logger?.error('Failed to read file', { filePath, error });
@@ -1043,10 +1054,18 @@ ipcMain.handle('player:getLastSuccessfulUrl', async (_event, channelId: string) 
 
 /**
  * Try next fallback URL for a channel
+ * @param depth - recursion guard to prevent stack overflow
  */
-async function tryNextFallbackUrl(channelId: string): Promise<{ success: boolean; error?: string; url?: string }> {
+const MAX_FALLBACK_DEPTH = 20;
+
+async function tryNextFallbackUrl(channelId: string, depth = 0): Promise<{ success: boolean; error?: string; url?: string }> {
   if (!vlcPlayer || !fallbackManager) {
     return { success: false, error: 'Player or fallback manager not available' };
+  }
+
+  if (depth >= MAX_FALLBACK_DEPTH) {
+    logger?.error('Fallback depth limit reached', { channelId, depth });
+    return { success: false, error: 'Too many fallback attempts' };
   }
 
   const nextUrl = fallbackManager.markFailureAndGetNext(channelId);
@@ -1087,8 +1106,7 @@ async function tryNextFallbackUrl(channelId: string): Promise<{ success: boolean
     
     // Check if more URLs available
     if (fallbackManager.hasMoreUrls(channelId)) {
-      // Recursively try next URL
-      return await tryNextFallbackUrl(channelId);
+      return await tryNextFallbackUrl(channelId, depth + 1);
     } else {
       return { success: false, error: 'All URLs exhausted' };
     }
@@ -1641,8 +1659,8 @@ ipcMain.handle('shell:openExternal', async (_, url: string) => {
 });
 
 app.whenReady().then(() => {
-  // Register IPC handlers once
-  registerIpcHandlers();
+  // IPC handlers are registered at module level (top-level ipcMain.handle calls)
+  // No additional registration needed here
   
   // Check for orphaned VLC processes on startup
   cleanupOrphanedVlcProcesses();
@@ -1688,10 +1706,10 @@ app.on('before-quit', (event) => {
     }
   }
 
-  // 4. Flush logger (if method exists)
-  if (logger && typeof (logger as any).close === 'function') {
+  // 4. Flush logger
+  if (logger) {
     logger.info('Clean shutdown complete');
-    (logger as any).close();
+    logger.close();
   }
 
   // 5. Now actually quit

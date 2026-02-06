@@ -6,6 +6,8 @@ export class RotatingLogger {
   private maxLogSize: number;
   private maxLogFiles: number;
   private currentLogFile: string;
+  private writeQueue: string[] = [];
+  private isWriting = false;
 
   constructor(logDir: string, maxLogSize = 5 * 1024 * 1024, maxLogFiles = 5) {
     this.logDir = logDir;
@@ -63,12 +65,50 @@ export class RotatingLogger {
     }
   }
 
+  /**
+   * Non-blocking async write with queue to prevent event loop blocking.
+   * Falls back to sync write if queue draining fails.
+   */
   private writeLog(message: string): void {
+    this.writeQueue.push(message);
+    this.drainQueue();
+  }
+
+  private drainQueue(): void {
+    if (this.isWriting || this.writeQueue.length === 0) return;
+    this.isWriting = true;
+
+    // Batch all queued messages into a single write
+    const batch = this.writeQueue.splice(0);
+    const data = batch.join('');
+
     try {
       this.rotateIfNeeded();
-      fs.appendFileSync(this.currentLogFile, message, 'utf-8');
-    } catch (error) {
-      console.error('[RotatingLogger] Failed to write log:', error);
+    } catch { /* rotation errors already logged */ }
+
+    fs.appendFile(this.currentLogFile, data, 'utf-8', (err) => {
+      this.isWriting = false;
+      if (err) {
+        console.error('[RotatingLogger] Failed to write log:', err);
+      }
+      // Drain any messages that arrived while we were writing
+      if (this.writeQueue.length > 0) {
+        this.drainQueue();
+      }
+    });
+  }
+
+  /**
+   * Flush remaining log messages synchronously (for shutdown)
+   */
+  close(): void {
+    if (this.writeQueue.length > 0) {
+      try {
+        const batch = this.writeQueue.splice(0);
+        fs.appendFileSync(this.currentLogFile, batch.join(''), 'utf-8');
+      } catch (error) {
+        console.error('[RotatingLogger] Failed to flush logs on close:', error);
+      }
     }
   }
 

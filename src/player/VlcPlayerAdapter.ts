@@ -11,16 +11,24 @@ export class VlcPlayerAdapter implements PlayerAdapter {
   private currentState: PlayerState = 'stopped';
   private lastUrl = '';
   private playDebounceTimer: NodeJS.Timeout | null = null;
+  private playAbortReject: ((reason: Error) => void) | null = null;
   private readonly DEBOUNCE_MS = 300;
 
   async play(url: string): Promise<void> {
-    // Debounce rapid play calls
+    // Cancel any pending debounced play — reject its promise so callers aren't left hanging
     if (this.playDebounceTimer) {
       clearTimeout(this.playDebounceTimer);
+      this.playDebounceTimer = null;
+      if (this.playAbortReject) {
+        this.playAbortReject(new Error('Play cancelled by newer request'));
+        this.playAbortReject = null;
+      }
     }
 
     return new Promise((resolve, reject) => {
+      this.playAbortReject = reject;
       this.playDebounceTimer = setTimeout(async () => {
+        this.playAbortReject = null;
         try {
           // Stop current playback first
           if (this.currentState === 'playing' || this.currentState === 'buffering') {

@@ -5,6 +5,7 @@ export interface AppSettings {
   lastPlaylist?: string;
   lastChannelId?: string; // Changed to string to support parsed channel IDs
   lastChannelIndex?: number; // Store the array index for quick access
+  lastCategory?: string; // Last selected category for restore
   channelHistory: string[]; // Stack of channel IDs (max 50)
   favorites: number[];
   volume: number;
@@ -68,6 +69,9 @@ export interface ElectronAPI {
   saveSettings: (settings: AppSettings) => Promise<boolean>;
   getSetting: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
   setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<boolean>;
+  
+  // Error logging (used by ErrorBoundary)
+  logError: (error: string, componentStack: string) => void;
   
   shell: {
     openExternal: (url: string) => Promise<void>;
@@ -143,10 +147,6 @@ export interface ElectronAPI {
     updateData: (data: Partial<ProfileData>) => Promise<void>;
     save: () => Promise<void>;
     verifyPin: (profileId: string, pin: string) => Promise<boolean>;
-  };
-
-  shell: {
-    openExternal: (url: string) => Promise<void>;
   };
 }
 

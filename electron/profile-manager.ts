@@ -330,8 +330,17 @@ export class ProfileManager {
 
   private comparePin(pin: string, storedHash: string): boolean {
     const [salt, hash] = storedHash.split(':');
+    if (!salt || !hash) return false;
     const verifyHash = crypto.pbkdf2Sync(pin, salt, 10000, 64, 'sha256').toString('hex');
-    return hash === verifyHash;
+    // Use timing-safe comparison to prevent side-channel attacks
+    try {
+      const hashBuf = Buffer.from(hash, 'hex');
+      const verifyBuf = Buffer.from(verifyHash, 'hex');
+      if (hashBuf.length !== verifyBuf.length) return false;
+      return crypto.timingSafeEqual(hashBuf, verifyBuf);
+    } catch {
+      return false;
+    }
   }
 
   private validatePin(pin: string): void {

@@ -78,6 +78,7 @@ export class EpgManager {
 
   /**
    * Get current and next programs for a channel
+   * Uses binary search for O(log n) performance with large program lists
    */
   getNowNext(channelId: string): EpgNowNext {
     const now = Date.now();
@@ -87,23 +88,37 @@ export class EpgManager {
       return { now: null, next: null, progress: 0 };
     }
 
-    // Binary search for current program
+    // Binary search: find the last program whose start <= now
+    let lo = 0;
+    let hi = channelPrograms.length - 1;
+    let candidateIdx = -1;
+
+    while (lo <= hi) {
+      const mid = (lo + hi) >>> 1;
+      if (channelPrograms[mid].start <= now) {
+        candidateIdx = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
     let currentProgram: EpgProgram | null = null;
     let nextProgram: EpgProgram | null = null;
 
-    for (let i = 0; i < channelPrograms.length; i++) {
-      const program = channelPrograms[i];
-      
-      if (program.start <= now && now < program.stop) {
-        // Found current program
-        currentProgram = program;
-        nextProgram = channelPrograms[i + 1] || null;
-        break;
-      } else if (program.start > now) {
-        // Current time is between programs
-        nextProgram = program;
-        break;
+    if (candidateIdx >= 0) {
+      const candidate = channelPrograms[candidateIdx];
+      if (now < candidate.stop) {
+        // We're inside this program
+        currentProgram = candidate;
+        nextProgram = channelPrograms[candidateIdx + 1] || null;
+      } else {
+        // We're in a gap between programs; next is the one after
+        nextProgram = channelPrograms[candidateIdx + 1] || null;
       }
+    } else {
+      // All programs start after now
+      nextProgram = channelPrograms[0] || null;
     }
 
     // Calculate progress
@@ -111,7 +126,7 @@ export class EpgManager {
     if (currentProgram) {
       const duration = currentProgram.stop - currentProgram.start;
       const elapsed = now - currentProgram.start;
-      progress = Math.max(0, Math.min(1, elapsed / duration));
+      progress = duration > 0 ? Math.max(0, Math.min(1, elapsed / duration)) : 0;
     }
 
     return {
@@ -210,7 +225,7 @@ export class EpgManager {
   }
 
   /**
-   * Save EPG data to cache
+   * Save EPG data to cache (atomic write)
    */
   private async saveToCache(): Promise<void> {
     try {
@@ -231,15 +246,19 @@ export class EpgManager {
         programs: Object.fromEntries(cache.programs)
       };
 
-      await fs.promises.writeFile(
-        this.cacheFilePath,
-        JSON.stringify(serializable),
-        'utf-8'
-      );
+      // Atomic write: temp file + rename
+      const tempPath = `${this.cacheFilePath}.tmp`;
+      await fs.promises.writeFile(tempPath, JSON.stringify(serializable), 'utf-8');
+      await fs.promises.rename(tempPath, this.cacheFilePath);
 
       this.logger?.info('EPG cache saved', { path: this.cacheFilePath });
     } catch (error) {
       this.logger?.error('Failed to save EPG cache', { error });
+      // Clean up temp file
+      try {
+        const tempPath = `${this.cacheFilePath}.tmp`;
+        await fs.promises.unlink(tempPath).catch(() => {});
+      } catch { /* ignore */ }
     }
   }
 
