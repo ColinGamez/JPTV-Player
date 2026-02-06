@@ -1,0 +1,124 @@
+.multiview-single {
+  width: 100%;
+  height: 100%;
+}
+
+.multiview-container {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 2px;
+  background: #000;
+}
+
+.multiview-dual {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.multiview-quad {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.multiview-pip {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  position: relative;
+}
+
+.multiview-slot {
+  position: relative;
+  background: #111;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.multiview-slot:hover {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: -2px;
+}
+
+.multiview-slot.active {
+  outline: 2px solid var(--theme-accent-primary, #0066ff);
+  outline-offset: -2px;
+}
+
+.multiview-slot.pip-slot {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 320px;
+  height: 180px;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+}
+
+.multiview-slot.pip-slot:hover {
+  transform: scale(1.05);
+}
+
+.slot-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+}
+
+.slot-info {
+  text-align: center;
+  color: #fff;
+}
+
+.slot-channel {
+  font-size: 18px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.slot-muted {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.slot-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.slot-empty-icon {
+  font-size: 48px;
+  display: block;
+  line-height: 1;
+}
+
+.slot-empty-text {
+  font-size: 13px;
+  margin-top: 8px;
+  display: block;
+}
+
+.slot-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.multiview-slot:hover .slot-badge {
+  opacity: 1;
+}

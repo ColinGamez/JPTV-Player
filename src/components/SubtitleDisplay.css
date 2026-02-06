@@ -1,0 +1,30 @@
+.subtitle-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 8000;
+  pointer-events: none;
+  padding: 0 10%;
+}
+
+.subtitle-bottom {
+  bottom: 60px;
+}
+
+.subtitle-top {
+  top: 60px;
+}
+
+.subtitle-text {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: center;
+  max-width: 80%;
+  word-wrap: break-word;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}

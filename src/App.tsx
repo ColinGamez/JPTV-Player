@@ -30,6 +30,8 @@ import { useSleepTimer } from './hooks/useSleepTimer';
 import { useChannelSort } from './hooks/useChannelSort';
 import { useScreenshot } from './hooks/useScreenshot';
 import { useWatchAnalytics } from './hooks/useWatchAnalytics';
+import { useMultiView } from './hooks/useMultiView';
+import { useSubtitles } from './hooks/useSubtitles';
 import { VlcPlayerAdapter } from './player/VlcPlayerAdapter';
 import CategoryRail from './components/CategoryRail';
 import ChannelList from './components/ChannelList';
@@ -56,6 +58,7 @@ import { ThemeSelector } from './components/ThemeSelector';
 import { SleepTimerOverlay, SleepTimerBadge } from './components/SleepTimer';
 import { ScreenshotFlash } from './components/ScreenshotFlash';
 import { WatchAnalytics } from './components/WatchAnalytics';
+import { SubtitleDisplay } from './components/SubtitleDisplay';
 import styles from './App.module.css';
 
 type FocusArea = 'categories' | 'channels' | 'player';
@@ -225,6 +228,12 @@ function App({ profileSession }: AppProps) {
   // New features: Watch Analytics
   const watchAnalytics = useWatchAnalytics();
 
+  // New features: Multi-View
+  const multiView = useMultiView();
+
+  // New features: Subtitles
+  const subtitles = useSubtitles();
+
   // Parental lock check helper
   const checkParentalLock = useCallback((type: 'category' | 'channel', id: string, callback: () => void) => {
     if (parentalLock.isLocked(type, id)) {
@@ -314,6 +323,22 @@ function App({ profileSession }: AppProps) {
         key: 'a',
         description: 'Toggle watch analytics',
         action: () => setShowAnalytics(prev => !prev),
+      },
+      {
+        key: 'c',
+        description: 'Toggle subtitles',
+        action: () => {
+          subtitles.toggleSubtitles();
+          toastNotifications.info(subtitles.settings.enabled ? 'Subtitles off' : 'Subtitles on');
+        },
+      },
+      {
+        key: 'v',
+        description: 'Cycle multi-view layout',
+        action: () => {
+          multiView.cycleLayout();
+          toastNotifications.info(`Layout: ${multiView.getLayoutIcon()} ${multiView.getLayoutLabel()}`);
+        },
       },
     ],
   });
@@ -1228,6 +1253,12 @@ function App({ profileSession }: AppProps) {
         isVisible={showAnalytics}
         onClose={() => setShowAnalytics(false)}
         onClearHistory={watchAnalytics.clearHistory}
+      />
+
+      {/* Subtitle Display */}
+      <SubtitleDisplay
+        text={subtitles.currentText}
+        settings={subtitles.settings}
       />
     </div>
   );
