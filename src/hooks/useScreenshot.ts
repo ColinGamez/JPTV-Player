@@ -14,7 +14,7 @@ export interface Screenshot {
   height: number;
 }
 
-const MAX_SCREENSHOTS = 50;
+const MAX_SCREENSHOTS = 20;
 
 export function useScreenshot() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
@@ -45,7 +45,9 @@ export function useScreenshot() {
 
       ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-      const dataUrl = canvas.toDataURL('image/png');
+      // Use JPEG at 0.8 quality instead of PNG to reduce memory footprint
+      // PNG data URLs for 1080p frames can be 5-10MB each; JPEG ~200-500KB
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
       
       const screenshot: Screenshot = {
         id: `ss-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -81,7 +83,7 @@ export function useScreenshot() {
     const link = document.createElement('a');
     link.href = screenshot.dataUrl;
     const timestamp = screenshot.timestamp.toISOString().replace(/[:.]/g, '-');
-    link.download = `${screenshot.channelName}_${timestamp}.png`;
+    link.download = `${screenshot.channelName}_${timestamp}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

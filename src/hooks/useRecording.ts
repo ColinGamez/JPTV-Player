@@ -18,7 +18,7 @@ export function useRecording(channelId?: string): UseRecordingResult {
   const [recordingsPath, setRecordingsPath] = useState('');
 
   const checkRecordingStatus = useCallback(async () => {
-    if (!channelId) return;
+    if (!channelId || !window.electronAPI?.recording) return;
     
     try {
       const recording = await window.electronAPI.recording.isRecording(channelId);
@@ -38,6 +38,7 @@ export function useRecording(channelId?: string): UseRecordingResult {
   }, [channelId]);
 
   const refreshActiveRecordings = useCallback(async () => {
+    if (!window.electronAPI?.recording) return;
     try {
       const active = await window.electronAPI.recording.getActive();
       setActiveRecordings(active);
@@ -48,6 +49,7 @@ export function useRecording(channelId?: string): UseRecordingResult {
   }, []);
 
   const loadRecordingsPath = useCallback(async () => {
+    if (!window.electronAPI?.recording) return;
     try {
       const path = await window.electronAPI.recording.getPath();
       setRecordingsPath(path);
@@ -58,6 +60,7 @@ export function useRecording(channelId?: string): UseRecordingResult {
   }, []);
 
   const startRecording = useCallback(async (id: string, name: string): Promise<boolean> => {
+    if (!window.electronAPI?.recording) return false;
     try {
       const result = await window.electronAPI.recording.start(id, name);
       if (result.success) {
@@ -75,6 +78,7 @@ export function useRecording(channelId?: string): UseRecordingResult {
   }, [checkRecordingStatus, refreshActiveRecordings]);
 
   const stopRecording = useCallback(async (id: string): Promise<boolean> => {
+    if (!window.electronAPI?.recording) return false;
     try {
       const result = await window.electronAPI.recording.stop(id);
       if (result.success) {

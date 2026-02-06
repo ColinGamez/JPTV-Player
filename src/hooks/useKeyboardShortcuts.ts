@@ -3,7 +3,7 @@
  * Centralized keyboard shortcut management for TV player
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 export interface KeyboardShortcut {
   key: string;
@@ -22,10 +22,15 @@ interface UseKeyboardShortcutsOptions {
 }
 
 export function useKeyboardShortcuts({ enabled = true, shortcuts }: UseKeyboardShortcutsOptions) {
+  // Use ref to avoid recreating the listener when shortcuts array identity changes
+  // (callers typically create new arrays every render via createPlayerShortcuts)
+  const shortcutsRef = useRef(shortcuts);
+  shortcutsRef.current = shortcuts;
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!enabled) return;
 
-    for (const shortcut of shortcuts) {
+    for (const shortcut of shortcutsRef.current) {
       const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
       const ctrlMatch = shortcut.ctrl ? e.ctrlKey : !e.ctrlKey;
       const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey;
@@ -40,7 +45,7 @@ export function useKeyboardShortcuts({ enabled = true, shortcuts }: UseKeyboardS
         break;
       }
     }
-  }, [enabled, shortcuts]);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;

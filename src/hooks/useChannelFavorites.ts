@@ -3,7 +3,7 @@
  * Manage favorite channels with persistence
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Channel } from '../types/channel';
 
 const STORAGE_KEY = 'favoriteChannels';
@@ -11,6 +11,7 @@ const MAX_FAVORITES = 50;
 
 export function useChannelFavorites() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const initializedRef = useRef(false);
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -23,10 +24,12 @@ export function useChannelFavorites() {
     } catch (error) {
       console.error('Failed to load favorites:', error);
     }
+    initializedRef.current = true;
   }, []);
 
-  // Save favorites to localStorage when changed
+  // Save favorites to localStorage when changed (skip initial mount write)
   useEffect(() => {
+    if (!initializedRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(favoriteIds)));
     } catch (error) {

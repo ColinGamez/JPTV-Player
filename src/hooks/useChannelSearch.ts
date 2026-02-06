@@ -135,13 +135,16 @@ export function useChannelSearch({ channels, onSelectChannel }: UseChannelSearch
     const handleGlobalShortcut = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
-        openSearch();
+        // Don't re-open if already open (avoids resetting query/selection)
+        if (!isSearchOpen) {
+          openSearch();
+        }
       }
     };
 
     window.addEventListener('keydown', handleGlobalShortcut);
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
-  }, [openSearch]);
+  }, [openSearch, isSearchOpen]);
 
   return {
     // State

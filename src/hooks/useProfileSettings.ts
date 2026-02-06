@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ProfileSession, ProfileData } from '../types/profile';
 
 /**
@@ -21,18 +21,24 @@ export function useProfileSettings(profileSession: ProfileSession) {
       return;
     }
 
+    // Capture previous state before optimistic update (for revert on error)
+    let previousData: ProfileData | null = null;
+    setProfileData(prev => {
+      previousData = prev;
+      return { ...prev, ...updates };
+    });
+
     try {
-      // Update local state immediately for UI responsiveness
-      setProfileData(prev => ({ ...prev, ...updates }));
-      
       // Persist to backend (saves to disk immediately)
       await window.electron.profile.updateData(updates);
     } catch (error) {
       console.error('Failed to update profile data:', error);
-      // Revert to original state on error
-      setProfileData(profileSession.data);
+      // Revert to the actual previous state captured above, not stale closure
+      if (previousData) {
+        setProfileData(previousData);
+      }
     }
-  }, [isElectron, profileSession.data]);
+  }, [isElectron]);
 
   const updateSetting = useCallback(async (key: string, value: any) => {
     await updateProfileData({ [key]: value });

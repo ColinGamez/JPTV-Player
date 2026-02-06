@@ -12,6 +12,7 @@ export function useAudioOnly(): UseAudioOnlyResult {
   // Load initial state
   useEffect(() => {
     const loadState = async () => {
+      if (!window.electronAPI?.player) return;
       try {
         const isAudioOnly = await window.electronAPI.player.getAudioOnly();
         setAudioOnlyModeState(isAudioOnly);
@@ -24,6 +25,7 @@ export function useAudioOnly(): UseAudioOnlyResult {
   }, []);
 
   const setAudioOnly = useCallback(async (enabled: boolean) => {
+    if (!window.electronAPI?.player) return;
     try {
       const result = await window.electronAPI.player.setAudioOnly(enabled);
       

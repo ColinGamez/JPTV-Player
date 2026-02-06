@@ -22,6 +22,10 @@ export function useProfileAudioNormalization(
   const [currentChannelId, setCurrentChannelId] = useState<string | number | null>(null);
   const samplingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMonitoringRef = useRef(false);
+  const settingsRef = useRef(settings);
+
+  // Keep ref in sync
+  settingsRef.current = settings;
 
   // Load profile data on mount
   useEffect(() => {
@@ -194,38 +198,48 @@ export function useProfileAudioNormalization(
 
   /**
    * Start monitoring audio levels for current channel
+   * Uses setTimeout chain instead of setInterval to prevent overlapping async calls
    */
   const startMonitoring = useCallback((channelId: string | number) => {
     // Stop existing monitoring
     if (samplingIntervalRef.current) {
-      clearInterval(samplingIntervalRef.current);
+      clearTimeout(samplingIntervalRef.current);
     }
 
     setCurrentChannelId(channelId);
     isMonitoringRef.current = true;
 
-    // Start sampling at configured interval
-    samplingIntervalRef.current = setInterval(async () => {
-      if (!isMonitoringRef.current) return;
+    // setTimeout chain: next sample only starts after previous completes
+    const scheduleNextSample = () => {
+      samplingIntervalRef.current = setTimeout(async () => {
+        if (!isMonitoringRef.current) return;
 
-      const level = await getCurrentAudioLevel();
-      if (level !== null) {
-        const sample: AudioLevelSample = {
-          timestamp: Date.now(),
-          level,
-          channelId
-        };
-        updateProfile(sample);
-      }
-    }, settings.samplingInterval);
-  }, [getCurrentAudioLevel, updateProfile, settings.samplingInterval]);
+        const level = await getCurrentAudioLevel();
+        if (level !== null) {
+          const sample: AudioLevelSample = {
+            timestamp: Date.now(),
+            level,
+            channelId
+          };
+          updateProfile(sample);
+        }
+
+        // Schedule next sample only after this one completes
+        if (isMonitoringRef.current) {
+          scheduleNextSample();
+        }
+      }, settingsRef.current.samplingInterval);
+    };
+
+    scheduleNextSample();
+  }, [getCurrentAudioLevel, updateProfile]);
 
   /**
    * Stop monitoring audio levels
    */
   const stopMonitoring = useCallback(() => {
     if (samplingIntervalRef.current) {
-      clearInterval(samplingIntervalRef.current);
+      clearTimeout(samplingIntervalRef.current);
       samplingIntervalRef.current = null;
     }
     isMonitoringRef.current = false;
@@ -329,7 +343,7 @@ export function useProfileAudioNormalization(
   useEffect(() => {
     return () => {
       if (samplingIntervalRef.current) {
-        clearInterval(samplingIntervalRef.current);
+        clearTimeout(samplingIntervalRef.current);
       }
     };
   }, []);

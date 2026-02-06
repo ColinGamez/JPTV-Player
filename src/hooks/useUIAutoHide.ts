@@ -79,13 +79,6 @@ export function useUIAutoHide(options: UseUIAutoHideOptions = {}): UseUIAutoHide
     return () => clearHideTimer();
   }, [enabled, isUIVisible, startHideTimer, clearHideTimer]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      clearHideTimer();
-    };
-  }, [clearHideTimer]);
-
   return {
     isUIVisible,
     showUI,

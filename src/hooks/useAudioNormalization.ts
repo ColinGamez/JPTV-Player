@@ -8,6 +8,8 @@ import { DEFAULT_AUDIO_SETTINGS } from '../types/audio-normalization';
 
 const STORAGE_KEY_PROFILES = 'jptv-audio-profiles';
 const STORAGE_KEY_SETTINGS = 'jptv-audio-settings';
+const MAX_PROFILES = 200; // LRU eviction threshold
+const PERSIST_DEBOUNCE_MS = 3000; // Debounce localStorage writes during monitoring
 
 /**
  * Hook for per-channel audio normalization
@@ -18,16 +20,30 @@ export function useAudioNormalization() {
   const [currentChannelId, setCurrentChannelId] = useState<string | number | null>(null);
   const samplingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMonitoringRef = useRef(false);
+  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const profilesRef = useRef(profiles);
+  const settingsRef = useRef(settings);
+
+  // Keep refs in sync
+  profilesRef.current = profiles;
+  settingsRef.current = settings;
 
   // Load persisted data on mount
   useEffect(() => {
     loadPersistedData();
   }, []);
 
-  // Persist data when profiles or settings change
+  // Persist data when profiles or settings change (debounced to avoid thrashing during monitoring)
   useEffect(() => {
-    persistData();
-  }, [profiles, settings]);
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      persistData();
+      persistTimerRef.current = null;
+    }, PERSIST_DEBOUNCE_MS);
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, [profiles, settings, persistData]);
 
   /**
    * Load persisted audio profiles and settings from localStorage
@@ -150,44 +166,64 @@ export function useAudioNormalization() {
         });
       }
 
+      // LRU eviction: if too many profiles, remove oldest
+      if (newProfiles.size > MAX_PROFILES) {
+        const entries = Array.from(newProfiles.entries());
+        entries.sort((a, b) => (a[1].lastUpdated || 0) - (b[1].lastUpdated || 0));
+        const toRemove = entries.slice(0, entries.length - MAX_PROFILES);
+        for (const [key] of toRemove) {
+          newProfiles.delete(key);
+        }
+      }
+
       return newProfiles;
     });
   }, [settings.adaptationSpeed]);
 
   /**
    * Start monitoring audio levels for current channel
+   * Uses setTimeout chain instead of setInterval to prevent overlapping async calls
    */
   const startMonitoring = useCallback((channelId: string | number) => {
     // Stop existing monitoring
     if (samplingIntervalRef.current) {
-      clearInterval(samplingIntervalRef.current);
+      clearTimeout(samplingIntervalRef.current);
     }
 
     setCurrentChannelId(channelId);
     isMonitoringRef.current = true;
 
-    // Start sampling at configured interval
-    samplingIntervalRef.current = setInterval(async () => {
-      if (!isMonitoringRef.current) return;
+    // setTimeout chain: next sample only starts after previous completes
+    const scheduleNextSample = () => {
+      samplingIntervalRef.current = setTimeout(async () => {
+        if (!isMonitoringRef.current) return;
 
-      const level = await getCurrentAudioLevel();
-      if (level !== null) {
-        const sample: AudioLevelSample = {
-          timestamp: Date.now(),
-          level,
-          channelId
-        };
-        updateProfile(sample);
-      }
-    }, settings.samplingInterval);
-  }, [getCurrentAudioLevel, updateProfile, settings.samplingInterval]);
+        const level = await getCurrentAudioLevel();
+        if (level !== null) {
+          const sample: AudioLevelSample = {
+            timestamp: Date.now(),
+            level,
+            channelId
+          };
+          updateProfile(sample);
+        }
+
+        // Schedule next sample only after this one completes
+        if (isMonitoringRef.current) {
+          scheduleNextSample();
+        }
+      }, settingsRef.current.samplingInterval);
+    };
+
+    scheduleNextSample();
+  }, [getCurrentAudioLevel, updateProfile]);
 
   /**
    * Stop monitoring audio levels
    */
   const stopMonitoring = useCallback(() => {
     if (samplingIntervalRef.current) {
-      clearInterval(samplingIntervalRef.current);
+      clearTimeout(samplingIntervalRef.current);
       samplingIntervalRef.current = null;
     }
     isMonitoringRef.current = false;
@@ -291,7 +327,16 @@ export function useAudioNormalization() {
   useEffect(() => {
     return () => {
       if (samplingIntervalRef.current) {
-        clearInterval(samplingIntervalRef.current);
+        clearTimeout(samplingIntervalRef.current);
+      }
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        // Flush pending data synchronously on unmount
+        try {
+          const profilesObj = Object.fromEntries(profilesRef.current);
+          localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profilesObj));
+          localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settingsRef.current));
+        } catch { /* best effort */ }
       }
     };
   }, []);

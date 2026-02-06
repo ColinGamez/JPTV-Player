@@ -3,7 +3,7 @@
  * Tracks and provides quick access to recently watched channels
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Channel } from '../types/channel';
 
 const MAX_RECENT_CHANNELS = 10;
@@ -17,6 +17,7 @@ interface RecentChannel {
 
 export function useRecentChannels() {
   const [recentChannels, setRecentChannels] = useState<RecentChannel[]>([]);
+  const initializedRef = useRef(false);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -29,10 +30,13 @@ export function useRecentChannels() {
     } catch (error) {
       console.error('Failed to load recent channels:', error);
     }
+    // Mark as initialized after first load
+    initializedRef.current = true;
   }, []);
 
-  // Save to localStorage when changed
+  // Save to localStorage when changed (skip initial mount write)
   useEffect(() => {
+    if (!initializedRef.current) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(recentChannels));
     } catch (error) {
