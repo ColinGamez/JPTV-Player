@@ -3,7 +3,7 @@
  * Non-intrusive notifications for user feedback
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -19,6 +19,28 @@ const DEFAULT_DURATION = 3000;
 
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Track auto-dismiss timers so they can be cancelled on unmount
+  const timerMapRef = useRef(new Map<string, NodeJS.Timeout>());
+
+  // Clear all pending timers on unmount
+  useEffect(() => {
+    const timers = timerMapRef.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+  }, []);
+
+  // Dismiss a specific toast
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+    // Clear associated timer
+    const timer = timerMapRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timerMapRef.current.delete(id);
+    }
+  }, []);
 
   // Show a toast notification
   const showToast = useCallback((
@@ -37,23 +59,22 @@ export function useToast() {
 
     setToasts(prev => [...prev, toast]);
 
-    // Auto-dismiss after duration
+    // Auto-dismiss after duration (tracked for cleanup)
     if (duration > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timerMapRef.current.delete(id);
         dismissToast(id);
       }, duration);
+      timerMapRef.current.set(id, timer);
     }
 
     return id;
-  }, []);
-
-  // Dismiss a specific toast
-  const dismissToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
+  }, [dismissToast]);
 
   // Clear all toasts
   const clearToasts = useCallback(() => {
+    timerMapRef.current.forEach(clearTimeout);
+    timerMapRef.current.clear();
     setToasts([]);
   }, []);
 

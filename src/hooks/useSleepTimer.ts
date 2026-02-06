@@ -21,6 +21,9 @@ export function useSleepTimer(onTimerEnd?: () => void) {
   const [presetMinutes, setPresetMinutes] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
+  // Store callback in ref to avoid interval teardown when caller doesn't memoize
+  const onTimerEndRef = useRef(onTimerEnd);
+  onTimerEndRef.current = onTimerEnd;
 
   // Tick countdown
   useEffect(() => {
@@ -43,7 +46,7 @@ export function useSleepTimer(onTimerEnd?: () => void) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
-        onTimerEnd?.();
+        onTimerEndRef.current?.();
       }
     }, 1000);
 
@@ -53,7 +56,7 @@ export function useSleepTimer(onTimerEnd?: () => void) {
         intervalRef.current = null;
       }
     };
-  }, [isActive, onTimerEnd]);
+  }, [isActive]);
 
   const startTimer = useCallback((minutes: number) => {
     const ms = minutes * 60 * 1000;

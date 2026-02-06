@@ -3,7 +3,7 @@
  * Tracks viewing habits and provides analytics
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 export interface WatchSession {
   channelId: string;
@@ -59,6 +59,9 @@ export function useWatchAnalytics() {
     channelName: string;
     startTime: number;
   } | null>(null);
+  // Ref to avoid stale closure in startWatching/stopWatching
+  const currentSessionRef = useRef(currentSession);
+  currentSessionRef.current = currentSession;
 
   // Save sessions whenever they change
   useEffect(() => {
@@ -66,16 +69,17 @@ export function useWatchAnalytics() {
   }, [sessions]);
 
   const startWatching = useCallback((channelId: string, channelName: string) => {
-    // End any previous session first
-    if (currentSession) {
-      const duration = Date.now() - currentSession.startTime;
+    // End any previous session first (read from ref to avoid stale closure)
+    const prev = currentSessionRef.current;
+    if (prev) {
+      const duration = Date.now() - prev.startTime;
       if (duration > 5000) { // Only record if watched > 5 seconds
-        setSessions(prev => [{
-          channelId: currentSession.channelId,
-          channelName: currentSession.channelName,
-          startTime: currentSession.startTime,
+        setSessions(s => [{
+          channelId: prev.channelId,
+          channelName: prev.channelName,
+          startTime: prev.startTime,
           duration,
-        }, ...prev].slice(0, MAX_SESSIONS));
+        }, ...s].slice(0, MAX_SESSIONS));
       }
     }
 
@@ -84,22 +88,23 @@ export function useWatchAnalytics() {
       channelName,
       startTime: Date.now(),
     });
-  }, [currentSession]);
+  }, []);
 
   const stopWatching = useCallback(() => {
-    if (currentSession) {
-      const duration = Date.now() - currentSession.startTime;
+    const prev = currentSessionRef.current;
+    if (prev) {
+      const duration = Date.now() - prev.startTime;
       if (duration > 5000) {
-        setSessions(prev => [{
-          channelId: currentSession.channelId,
-          channelName: currentSession.channelName,
-          startTime: currentSession.startTime,
+        setSessions(s => [{
+          channelId: prev.channelId,
+          channelName: prev.channelName,
+          startTime: prev.startTime,
           duration,
-        }, ...prev].slice(0, MAX_SESSIONS));
+        }, ...s].slice(0, MAX_SESSIONS));
       }
       setCurrentSession(null);
     }
-  }, [currentSession]);
+  }, []);
 
   const stats = useMemo((): WatchStats => {
     const allSessions = [...sessions];

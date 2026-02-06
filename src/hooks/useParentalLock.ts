@@ -21,22 +21,22 @@ export function useParentalLock(): ParentalLockHook {
     isUnlocked: false
   });
 
-  // Check if unlock timeout has expired
+  // Check if unlock timeout has expired — uses a single setTimeout instead of polling
   useEffect(() => {
     if (!lockState.unlockedUntil) return;
 
-    const checkExpiry = () => {
-      if (Date.now() >= lockState.unlockedUntil!) {
-        setLockState({ unlockedUntil: null, isUnlocked: false });
-      }
-    };
+    const remaining = lockState.unlockedUntil - Date.now();
+    if (remaining <= 0) {
+      // Already expired
+      setLockState({ unlockedUntil: null, isUnlocked: false });
+      return;
+    }
 
-    // Check immediately
-    checkExpiry();
+    const timer = setTimeout(() => {
+      setLockState({ unlockedUntil: null, isUnlocked: false });
+    }, remaining);
 
-    // Check every second
-    const interval = setInterval(checkExpiry, 1000);
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, [lockState.unlockedUntil]);
 
   // Reset lock when profile changes

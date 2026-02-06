@@ -3,11 +3,12 @@
  * Manages audio volume with visual feedback
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 const VOLUME_STORAGE_KEY = 'playerVolume';
 const DEFAULT_VOLUME = 100;
 const VOLUME_STEP = 5;
+const VOLUME_PERSIST_DELAY = 500; // Debounce localStorage writes
 
 export function useVolumeControl() {
   const [volume, setVolume] = useState<number>(() => {
@@ -22,14 +23,21 @@ export function useVolumeControl() {
   const [isMuted, setIsMuted] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(DEFAULT_VOLUME);
   const [isVolumeVisible, setIsVolumeVisible] = useState(false);
+  const persistTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Save volume to localStorage
+  // Debounced save volume to localStorage (prevents thrashing on hold-down)
   useEffect(() => {
-    try {
-      localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
-    } catch (err) {
-      console.error('Failed to save volume:', err);
-    }
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(VOLUME_STORAGE_KEY, volume.toString());
+      } catch (err) {
+        console.error('Failed to save volume:', err);
+      }
+    }, VOLUME_PERSIST_DELAY);
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
   }, [volume]);
 
   // Auto-hide volume indicator after 2 seconds

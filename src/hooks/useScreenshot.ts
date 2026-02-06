@@ -3,7 +3,7 @@
  * Captures frames from the video player
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface Screenshot {
   id: string;
@@ -20,6 +20,14 @@ export function useScreenshot() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [lastScreenshot, setLastScreenshot] = useState<Screenshot | null>(null);
   const [showFlash, setShowFlash] = useState(false);
+  const flashTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup flash timer on unmount
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   const captureScreenshot = useCallback(async (
     videoElement: HTMLVideoElement | null,
@@ -54,9 +62,13 @@ export function useScreenshot() {
       });
       setLastScreenshot(screenshot);
       
-      // Camera flash effect
+      // Camera flash effect (tracked timer)
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       setShowFlash(true);
-      setTimeout(() => setShowFlash(false), 150);
+      flashTimerRef.current = setTimeout(() => {
+        setShowFlash(false);
+        flashTimerRef.current = null;
+      }, 150);
 
       return screenshot;
     } catch (err) {

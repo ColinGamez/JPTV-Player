@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { AppSettings } from '../types/electron';
 
 const defaultSettings: AppSettings = {
@@ -10,25 +10,25 @@ const defaultSettings: AppSettings = {
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [isElectron] = useState(() => typeof window !== 'undefined' && window.electronAPI !== undefined);
+  // Ref tracks latest settings to avoid stale closures in rapid updateSetting calls
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   useEffect(() => {
-    if (isElectron) {
-      loadSettings();
-    }
+    if (!isElectron) return;
+    (async () => {
+      try {
+        const loaded = await window.electronAPI.loadSettings();
+        setSettings(loaded);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    })();
   }, [isElectron]);
 
-  const loadSettings = async () => {
-    if (!isElectron) return;
-    try {
-      const loaded = await window.electronAPI.loadSettings();
-      setSettings(loaded);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
-
-  const saveSettings = async (newSettings: AppSettings) => {
+  const saveSettings = useCallback(async (newSettings: AppSettings) => {
     setSettings(newSettings);
+    settingsRef.current = newSettings;
     if (isElectron) {
       try {
         await window.electronAPI.saveSettings(newSettings);
@@ -36,22 +36,24 @@ export function useSettings() {
         console.error('Failed to save settings:', error);
       }
     }
-  };
+  }, [isElectron]);
 
-  const updateSetting = async <K extends keyof AppSettings>(
+  const updateSetting = useCallback(async <K extends keyof AppSettings>(
     key: K,
     value: AppSettings[K]
   ) => {
-    const newSettings = { ...settings, [key]: value };
+    // Read from ref to prevent stale closure on rapid sequential calls
+    const newSettings = { ...settingsRef.current, [key]: value };
     await saveSettings(newSettings);
-  };
+  }, [saveSettings]);
 
-  const toggleFavorite = async (channelId: number) => {
-    const favorites = settings.favorites.includes(channelId)
-      ? settings.favorites.filter(id => id !== channelId)
-      : [...settings.favorites, channelId];
+  const toggleFavorite = useCallback(async (channelId: number) => {
+    const current = settingsRef.current;
+    const favorites = current.favorites.includes(channelId)
+      ? current.favorites.filter(id => id !== channelId)
+      : [...current.favorites, channelId];
     await updateSetting('favorites', favorites);
-  };
+  }, [updateSetting]);
 
   return {
     settings,

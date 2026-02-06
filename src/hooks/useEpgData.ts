@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { EpgNowNext, EpgGuideWindow, EpgChannel } from '../types/epg';
 
 interface EpgStats {
@@ -145,18 +145,22 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
   }, []);
 
   // Auto-refresh now/next data
+  // Use ref to avoid recreating interval every time nowNext state changes
+  const nowNextRef = useRef(nowNext);
+  nowNextRef.current = nowNext;
+
   useEffect(() => {
     if (!stats.loaded || autoRefreshInterval <= 0) return;
 
     const interval = setInterval(() => {
-      const channelIds = Array.from(nowNext.keys());
+      const channelIds = Array.from(nowNextRef.current.keys());
       if (channelIds.length > 0) {
         refreshNowNext(channelIds);
       }
     }, autoRefreshInterval);
 
     return () => clearInterval(interval);
-  }, [stats.loaded, autoRefreshInterval, nowNext, refreshNowNext]);
+  }, [stats.loaded, autoRefreshInterval, refreshNowNext]);
 
   return {
     nowNext,

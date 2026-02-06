@@ -38,17 +38,21 @@ export function useNumericInput(onChannelSelect: (number: number) => void) {
     // Parse and validate
     const number = parseInt(newBuffer, 10);
 
+    // If buffer is at max length, submit immediately instead of discarding
+    if (newBuffer.length >= 4) {
+      if (number > 0) {
+        onChannelSelect(number);
+      }
+      clearInput();
+      return;
+    }
+
     // If we have a valid number, set timeout to confirm
     if (number > 0) {
       timeoutRef.current = setTimeout(() => {
         onChannelSelect(number);
         clearInput();
       }, INPUT_TIMEOUT_MS);
-    }
-
-    // If buffer is too long, clear it
-    if (newBuffer.length >= 4) {
-      clearInput();
     }
   }, [inputBuffer, onChannelSelect, clearInput]);
 
