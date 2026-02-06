@@ -1,9 +1,10 @@
 export interface Channel {
-  id: number;
+  id: string;
   name: string;
-  category: string;
+  group: string;
   logo: string;
   url: string;
+  urls: string[];
 }
 
 export interface Category {
@@ -13,80 +14,90 @@ export interface Category {
 
 export const mockChannels: Channel[] = [
   {
-    id: 1,
+    id: '1',
     name: 'NHK総合',
-    category: 'terrestrial',
+    group: 'terrestrial',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/NHK_logo_2020.svg',
-    url: 'mock://nhk-general'
+    url: 'mock://nhk-general',
+    urls: ['mock://nhk-general']
   },
   {
-    id: 2,
+    id: '2',
     name: 'テレビ朝日',
-    category: 'terrestrial',
+    group: 'terrestrial',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/5/51/TV_Asahi_Logo.svg',
-    url: 'mock://tv-asahi'
+    url: 'mock://tv-asahi',
+    urls: ['mock://tv-asahi']
   },
   {
-    id: 3,
+    id: '3',
     name: 'TBS',
-    category: 'terrestrial',
+    group: 'terrestrial',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/1/14/Tokyo_Broadcasting_System_logo_2020.svg',
-    url: 'mock://tbs'
+    url: 'mock://tbs',
+    urls: ['mock://tbs']
   },
   {
-    id: 4,
+    id: '4',
     name: 'フジテレビ',
-    category: 'terrestrial',
+    group: 'terrestrial',
     logo: 'https://upload.wikimedia.org/wikipedia/fr/6/65/Fuji_TV_Logo.svg',
-    url: 'mock://fuji-tv'
+    url: 'mock://fuji-tv',
+    urls: ['mock://fuji-tv']
   },
   {
-    id: 5,
+    id: '5',
     name: 'BS11',
-    category: 'BS',
+    group: 'BS',
     logo: 'https://www.lyngsat.com/logo/tv/bb/bs11_jp.png',
-    url: 'mock://bs11'
+    url: 'mock://bs11',
+    urls: ['mock://bs11']
   },
   {
-    id: 6,
+    id: '6',
     name: 'BSフジ',
-    category: 'BS',
+    group: 'BS',
     logo: 'https://www.lyngsat.com/logo/tv/bb/bsfuji-jp.png',
-    url: 'mock://bs-fuji'
+    url: 'mock://bs-fuji',
+    urls: ['mock://bs-fuji']
   },
   {
-    id: 7,
+    id: '7',
     name: 'WOWOW',
-    category: 'BS',
+    group: 'BS',
     logo: 'https://corporate.wowow.co.jp/recruit/assets/img/common/logo02.svg',
-    url: 'mock://wowow'
+    url: 'mock://wowow',
+    urls: ['mock://wowow']
   },
   {
-    id: 8,
+    id: '8',
     name: 'スカイA',
-    category: 'CS',
+    group: 'CS',
     logo: 'https://www.lyngsat.com/logo/tv/ss/sky-a-jp.png',
-    url: 'mock://sky-a'
+    url: 'mock://sky-a',
+    urls: ['mock://sky-a']
   },
   {
-    id: 9,
+    id: '9',
     name: 'アニマックス',
-    category: 'CS',
+    group: 'CS',
     logo: 'https://www.lyngsat.com/logo/tv/aa/animax_jp.png',
-    url: 'mock://animax'
+    url: 'mock://animax',
+    urls: ['mock://animax']
   },
   {
-    id: 10,
+    id: '10',
     name: 'キッズステーション',
-    category: 'CS',
+    group: 'CS',
     logo: 'https://www.lyngsat.com/logo/tv/kk/kids-station-jp.png',
-    url: 'mock://kids-station'
+    url: 'mock://kids-station',
+    urls: ['mock://kids-station']
   }
 ];
 
 export const mockCategories: Category[] = [
   { name: 'すべて', count: mockChannels.length },
-  { name: 'terrestrial', count: mockChannels.filter(c => c.category === 'terrestrial').length },
-  { name: 'BS', count: mockChannels.filter(c => c.category === 'BS').length },
-  { name: 'CS', count: mockChannels.filter(c => c.category === 'CS').length }
+  { name: 'terrestrial', count: mockChannels.filter(c => c.group === 'terrestrial').length },
+  { name: 'BS', count: mockChannels.filter(c => c.group === 'BS').length },
+  { name: 'CS', count: mockChannels.filter(c => c.group === 'CS').length }
 ];

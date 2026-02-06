@@ -157,11 +157,8 @@ function App({ profileSession }: AppProps) {
   } = useChannelSearch({
     channels: activeChannels,
     onSelectChannel: async (channel) => {
-      const channelId = typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id;
-      const index = filteredChannels.findIndex(ch => {
-        const chId = typeof ch.id === 'string' ? parseInt(ch.id, 16) || 0 : ch.id;
-        return chId === channelId;
-      });
+      const channelId = String(channel.id);
+      const index = filteredChannels.findIndex(ch => String(ch.id) === channelId);
       if (index >= 0) {
         setChannelIndex(index);
         setSelectedChannel(channel);
@@ -259,8 +256,11 @@ function App({ profileSession }: AppProps) {
         key: 't',
         description: 'Cycle theme',
         action: () => {
+          // Compute next theme name before cycling (state update is async)
+          const ids = availableThemes.map(t => t.id);
+          const nextIdx = (ids.indexOf(themeId) + 1) % ids.length;
           cycleTheme();
-          toastNotifications.info(`Theme: ${theme.name}`);
+          toastNotifications.info(`Theme: ${availableThemes[nextIdx].name}`);
         },
       },
       {
@@ -719,10 +719,7 @@ function App({ profileSession }: AppProps) {
       if (e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         if (selectedChannel) {
-          const channelId = typeof selectedChannel.id === 'string'
-            ? parseInt(selectedChannel.id, 16) || 0
-            : selectedChannel.id;
-          toggleFavorite(channelId);
+          toggleFavorite(String(selectedChannel.id));
         }
         return;
       }
@@ -931,11 +928,7 @@ function App({ profileSession }: AppProps) {
       {showInfo && selectedChannel && (
         <InfoOverlay 
           channel={selectedChannel}
-          isFavorite={settings.favorites.includes(
-            typeof selectedChannel.id === 'string' 
-              ? parseInt(selectedChannel.id, 16) || 0 
-              : selectedChannel.id
-          )}
+          isFavorite={settings.favorites.includes(String(selectedChannel.id))}
           playlistPath={playlistPath}
         />
       )}
@@ -1027,11 +1020,8 @@ function App({ profileSession }: AppProps) {
         selectedIndex={searchSelectedIndex}
         onQueryChange={updateQuery}
         onSelect={async (channel) => {
-          const channelId = typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id;
-          const index = filteredChannels.findIndex(ch => {
-            const chId = typeof ch.id === 'string' ? parseInt(ch.id, 16) || 0 : ch.id;
-            return chId === channelId;
-          });
+          const channelId = String(channel.id);
+          const index = filteredChannels.findIndex(ch => String(ch.id) === channelId);
           if (index >= 0) {
             setChannelIndex(index);
             setSelectedChannel(channel);

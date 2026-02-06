@@ -49,16 +49,17 @@ export const ProfileSelect: React.FC<ProfileSelectProps> = ({
         return;
       }
 
-      e.preventDefault();
-
       switch (e.key) {
         case 'ArrowUp':
+          e.preventDefault();
           setSelectedIndex(prev => Math.max(0, prev - 1));
           break;
         case 'ArrowDown':
+          e.preventDefault();
           setSelectedIndex(prev => Math.min(profiles.length, prev + 1)); // +1 for "Create New" option
           break;
         case 'Enter':
+          e.preventDefault();
           if (selectedIndex < profiles.length) {
             // Select profile
             onSelectProfile(profiles[selectedIndex]);
@@ -70,10 +71,13 @@ export const ProfileSelect: React.FC<ProfileSelectProps> = ({
         case 'Delete':
         case 'd':
         case 'D':
+          e.preventDefault();
           if (selectedIndex < profiles.length && profiles.length > 1) {
             setShowDeleteConfirm(true);
           }
           break;
+        default:
+          return; // Don't block unhandled keys
       }
     };
 

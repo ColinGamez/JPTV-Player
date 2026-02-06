@@ -54,7 +54,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     >
       <div className="toast-icon">{getIcon()}</div>
       <div className="toast-message">{toast.message}</div>
-      <button className="toast-close" onClick={handleDismiss} aria-label="Dismiss">
+      <button className="toast-close" onClick={(e) => { e.stopPropagation(); handleDismiss(); }} aria-label="Dismiss">
         ✕
       </button>
     </div>

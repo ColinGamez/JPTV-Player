@@ -63,13 +63,15 @@ export function useMultiView() {
     setLayout(layouts[nextIdx]);
   }, [layout]);
 
-  const swapSlots = useCallback((slotA: number, slotB: number) => {
+  const swapSlots = useCallback((idA: number, idB: number) => {
     setSlots(prev => {
+      const indexA = prev.findIndex(s => s.id === idA);
+      const indexB = prev.findIndex(s => s.id === idB);
+      if (indexA === -1 || indexB === -1) return prev;
       const updated = [...prev];
-      const channelA = updated[slotA]?.channel;
-      const channelB = updated[slotB]?.channel;
-      if (updated[slotA]) updated[slotA] = { ...updated[slotA], channel: channelB ?? null };
-      if (updated[slotB]) updated[slotB] = { ...updated[slotB], channel: channelA ?? null };
+      const channelA = updated[indexA].channel;
+      updated[indexA] = { ...updated[indexA], channel: updated[indexB].channel };
+      updated[indexB] = { ...updated[indexB], channel: channelA };
       return updated;
     });
   }, []);
