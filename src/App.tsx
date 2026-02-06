@@ -23,6 +23,10 @@ import { useRecentChannels } from './hooks/useRecentChannels';
 import { useChannelFavorites } from './hooks/useChannelFavorites';
 import { useToast } from './hooks/useToast';
 import { useMiniPlayer } from './hooks/useMiniPlayer';
+import { useVolumeControl } from './hooks/useVolumeControl';
+import { usePerformanceMonitor } from './hooks/usePerformanceMonitor';
+import { useTheme } from './hooks/useTheme';
+import { useSleepTimer } from './hooks/useSleepTimer';
 import { VlcPlayerAdapter } from './player/VlcPlayerAdapter';
 import CategoryRail from './components/CategoryRail';
 import ChannelList from './components/ChannelList';
@@ -41,6 +45,12 @@ import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { StatusIndicator } from './components/StatusIndicator';
 import { ToastContainer } from './components/ToastContainer';
 import { ChannelInfoPanel } from './components/ChannelInfoPanel';
+import { VolumeSlider } from './components/VolumeSlider';
+import { ChannelNumberOverlay } from './components/ChannelNumberOverlay';
+import { PerformanceMonitor } from './components/PerformanceMonitor';
+import { ChannelGrid } from './components/ChannelGrid';
+import { ThemeSelector } from './components/ThemeSelector';
+import { SleepTimerOverlay, SleepTimerBadge } from './components/SleepTimer';
 import styles from './App.module.css';
 
 type FocusArea = 'categories' | 'channels' | 'player';
@@ -65,6 +75,9 @@ function App({ profileSession }: AppProps) {
   const [showParentalLockSettings, setShowParentalLockSettings] = useState(false);
   const [showDonationJar, setShowDonationJar] = useState(false);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showChannelGrid, setShowChannelGrid] = useState(false);
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [showSleepTimer, setShowSleepTimer] = useState(false);
   const [pendingLockAction, setPendingLockAction] = useState<{ type: 'category' | 'channel', id: string, callback: () => void } | null>(null);
   const hasRestoredChannel = useRef(false);
   const lastNavigationTime = useRef<number>(0);
@@ -170,6 +183,31 @@ function App({ profileSession }: AppProps) {
   // New features: Mini Player (Picture-in-Picture)
   const miniPlayer = useMiniPlayer({ videoElement: videoRef.current });
 
+  // New features: Volume Control
+  const {
+    volume,
+    isMuted,
+    isVolumeVisible,
+    increaseVolume,
+    decreaseVolume,
+    setVolume,
+    toggleMute,
+    getVolumeIcon,
+  } = useVolumeControl();
+
+  // New features: Performance Monitor (dev mode only)
+  const performanceMonitor = usePerformanceMonitor(import.meta.env.DEV);
+
+  // New features: Theme System
+  const { theme, themeId, setTheme, cycleTheme, availableThemes } = useTheme();
+
+  // New features: Sleep Timer
+  const sleepTimer = useSleepTimer(() => {
+    // When timer ends, stop playback
+    playerAdapter.stop();
+    toastNotifications.info('Sleep timer ended — playback stopped');
+  });
+
   // Parental lock check helper
   const checkParentalLock = useCallback((type: 'category' | 'channel', id: string, callback: () => void) => {
     if (parentalLock.isLocked(type, id)) {
@@ -188,13 +226,13 @@ function App({ profileSession }: AppProps) {
       toastNotifications.info('Play/Pause');
     },
     onVolumeUp: () => {
-      toastNotifications.info('Volume Up');
+      increaseVolume();
     },
     onVolumeDown: () => {
-      toastNotifications.info('Volume Down');
+      decreaseVolume();
     },
     onMute: () => {
-      toastNotifications.info('Mute/Unmute');
+      toggleMute();
     },
     onFullscreen: toggleFullscreen,
     onChannelUp: () => handlePlayerNavigation('ArrowRight'),
@@ -212,6 +250,7 @@ function App({ profileSession }: AppProps) {
       else if (showNowNext) setShowNowNext(false);
       else if (isSearchOpen) closeSearch();
       else if (showShortcutsHelp) setShowShortcutsHelp(false);
+      else if (showChannelGrid) setShowChannelGrid(false);
     },
   });
 
@@ -223,6 +262,24 @@ function App({ profileSession }: AppProps) {
         key: '?',
         description: 'Show keyboard shortcuts help',
         action: () => setShowShortcutsHelp(prev => !prev),
+      },
+      {
+        key: 'g',
+        description: 'Toggle channel grid view',
+        action: () => setShowChannelGrid(prev => !prev),
+      },
+      {
+        key: 't',
+        description: 'Cycle theme',
+        action: () => {
+          cycleTheme();
+          toastNotifications.info(`Theme: ${theme.name}`);
+        },
+      },
+      {
+        key: 'z',
+        description: 'Toggle sleep timer',
+        action: () => setShowSleepTimer(prev => !prev),
       },
     ],
   });
@@ -1046,6 +1103,85 @@ function App({ profileSession }: AppProps) {
       <ToastContainer
         toasts={toastNotifications.toasts}
         onDismiss={toastNotifications.dismissToast}
+      />
+
+      {/* Volume Slider Overlay */}
+      <VolumeSlider
+        volume={volume}
+        isMuted={isMuted}
+        isVisible={isVolumeVisible}
+        icon={getVolumeIcon()}
+      />
+
+      {/* Channel Number Overlay */}
+      {inputBuffer && (
+        <ChannelNumberOverlay
+          channelNumber={inputBuffer}
+          isVisible={true}
+          onTimeout={() => {}}
+          timeout={2000}
+        />
+      )}
+
+      {/* Channel Grid View */}
+      <ChannelGrid
+        channels={activeChannels}
+        isVisible={showChannelGrid}
+        onClose={() => setShowChannelGrid(false)}
+        onSelectChannel={async (channel) => {
+          setSelectedChannel(channel);
+          clearError();
+          updateState('buffering', channel.name);
+          const playResult = await playChannelWithFallback(channel);
+          if (playResult.success) {
+            recentChannels.addRecentChannel(channel);
+            toastNotifications.success(`Now playing: ${channel.name}`);
+            setFocusArea('player');
+          } else {
+            toastNotifications.error('Playback failed');
+          }
+        }}
+        favorites={channelFavorites.favorites.map(fav =>
+          typeof fav === 'string' ? parseInt(fav, 16) || 0 : fav
+        )}
+      />
+
+      {/* Performance Monitor (Dev Mode) */}
+      {import.meta.env.DEV && performanceMonitor.metrics && (
+        <PerformanceMonitor
+          metrics={performanceMonitor.metrics}
+          performanceGrade={performanceMonitor.getPerformanceGrade()}
+        />
+      )}
+
+      {/* Theme Selector */}
+      <ThemeSelector
+        currentThemeId={themeId}
+        themes={availableThemes}
+        onSelectTheme={setTheme}
+        isVisible={showThemeSelector}
+        onClose={() => setShowThemeSelector(false)}
+      />
+
+      {/* Sleep Timer Overlay */}
+      <SleepTimerOverlay
+        isVisible={showSleepTimer}
+        isActive={sleepTimer.isActive}
+        remainingFormatted={sleepTimer.formatRemaining()}
+        progress={sleepTimer.getProgress()}
+        presetMinutes={sleepTimer.presetMinutes}
+        presets={sleepTimer.presets}
+        onStartTimer={sleepTimer.startTimer}
+        onCancelTimer={sleepTimer.cancelTimer}
+        onExtendTimer={sleepTimer.extendTimer}
+        onClose={() => setShowSleepTimer(false)}
+      />
+
+      {/* Sleep Timer Badge */}
+      <SleepTimerBadge
+        isActive={sleepTimer.isActive}
+        remainingFormatted={sleepTimer.formatRemaining()}
+        onClick={() => setShowSleepTimer(true)}
       />
     </div>
   );

@@ -1,0 +1,86 @@
+.performance-monitor {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 16px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 11px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 140px;
+}
+
+.perf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.perf-title {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+
+.perf-grade {
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.perf-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perf-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.perf-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.perf-value {
+  color: #fff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.perf-warning {
+  color: #ff4444;
+}
+
+/* Compact mode for mobile */
+@media (max-width: 768px) {
+  .performance-monitor {
+    bottom: 10px;
+    left: 10px;
+    padding: 8px 12px;
+    min-width: 120px;
+  }
+
+  .perf-header {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+
+  .perf-metrics {
+    gap: 4px;
+  }
+}
