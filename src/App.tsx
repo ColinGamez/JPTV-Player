@@ -17,6 +17,12 @@ import { useProfileAudioNormalization } from './hooks/useProfileAudioNormalizati
 import { useParentalLock } from './hooks/useParentalLock';
 import { useUIAutoHide } from './hooks/useUIAutoHide';
 import { useFullscreen } from './hooks/useFullscreen';
+import { useChannelSearch } from './hooks/useChannelSearch';
+import { useKeyboardShortcuts, createPlayerShortcuts } from './hooks/useKeyboardShortcuts';
+import { useRecentChannels } from './hooks/useRecentChannels';
+import { useChannelFavorites } from './hooks/useChannelFavorites';
+import { useToast } from './hooks/useToast';
+import { useMiniPlayer } from './hooks/useMiniPlayer';
 import { VlcPlayerAdapter } from './player/VlcPlayerAdapter';
 import CategoryRail from './components/CategoryRail';
 import ChannelList from './components/ChannelList';
@@ -30,6 +36,11 @@ import { FullGuideGrid } from './components/FullGuideGrid';
 import { ParentalLockOverlay } from './components/ParentalLockOverlay';
 import { ParentalLockSettings } from './components/ParentalLockSettings';
 import { DonationJar } from './components/DonationJar';
+import { ChannelSearchModal } from './components/ChannelSearchModal';
+import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
+import { StatusIndicator } from './components/StatusIndicator';
+import { ToastContainer } from './components/ToastContainer';
+import { ChannelInfoPanel } from './components/ChannelInfoPanel';
 import styles from './App.module.css';
 
 type FocusArea = 'categories' | 'channels' | 'player';
@@ -53,10 +64,12 @@ function App({ profileSession }: AppProps) {
   const [showParentalLockOverlay, setShowParentalLockOverlay] = useState(false);
   const [showParentalLockSettings, setShowParentalLockSettings] = useState(false);
   const [showDonationJar, setShowDonationJar] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [pendingLockAction, setPendingLockAction] = useState<{ type: 'category' | 'channel', id: string, callback: () => void } | null>(null);
   const hasRestoredChannel = useRef(false);
   const lastNavigationTime = useRef<number>(0);
   const navigationThrottle = 100; // ms between navigation events
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { settings, updateSetting, toggleFavorite, updateProfileData, isElectron } = useProfileSettings(profileSession);
   const { openPlaylist, playlistPath, channels, categories, parseError } = usePlaylist({ 
@@ -84,6 +97,79 @@ function App({ profileSession }: AppProps) {
     isElectron
   });
 
+  // Setup player state callback
+  useEffect(() => {
+    playerAdapter.onStateChange((state) => {
+      updateState(state, selectedChannel?.name);
+    });
+  }, [selectedChannel, updateState]);
+
+  // Use parsed channels if available, otherwise use mock data (moved up for hooks)
+  const activeChannels = channels.length > 0 ? channels : mockChannels;
+  const activeCategories = channels.length > 0 
+    ? [
+        { name: 'すべて', count: channels.length },
+        ...Object.keys(categories).map(cat => ({
+          name: cat,
+          count: categories[cat].length
+        }))
+      ]
+    : mockCategories;
+
+  const filteredChannels = selectedCategory === 'すべて'
+    ? activeChannels
+    : channels.length > 0
+      ? (categories[selectedCategory] || [])
+      : mockChannels.filter(c => c.category === selectedCategory);
+
+  // New features: Channel Search
+  const {
+    isSearchOpen,
+    searchQuery,
+    searchResults,
+    selectedIndex: searchSelectedIndex,
+    openSearch,
+    closeSearch,
+    updateQuery,
+    selectCurrent: selectSearchResult,
+  } = useChannelSearch({
+    channels: activeChannels,
+    onSelectChannel: async (channel) => {
+      const channelId = typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id;
+      const index = filteredChannels.findIndex(ch => {
+        const chId = typeof ch.id === 'string' ? parseInt(ch.id, 16) || 0 : ch.id;
+        return chId === channelId;
+      });
+      if (index >= 0) {
+        setChannelIndex(index);
+        setSelectedChannel(channel);
+        clearError();
+        updateState('buffering', channel.name);
+        
+        const playResult = await playChannelWithFallback(channel);
+        if (playResult.success) {
+          recentChannels.addRecentChannel(channel);
+          toastNotifications.success(`Now playing: ${channel.name}`);
+          setFocusArea('player');
+        } else {
+          toastNotifications.error('Playback failed');
+        }
+      }
+    },
+  });
+
+  // New features: Channel Favorites
+  const channelFavorites = useChannelFavorites();
+
+  // New features: Recent Channels
+  const recentChannels = useRecentChannels();
+
+  // New features: Toast Notifications
+  const toastNotifications = useToast();
+
+  // New features: Mini Player (Picture-in-Picture)
+  const miniPlayer = useMiniPlayer({ videoElement: videoRef.current });
+
   // Parental lock check helper
   const checkParentalLock = useCallback((type: 'category' | 'channel', id: string, callback: () => void) => {
     if (parentalLock.isLocked(type, id)) {
@@ -94,6 +180,52 @@ function App({ profileSession }: AppProps) {
     callback();
     return true; // Allowed
   }, [parentalLock]);
+
+  // Global keyboard shortcuts
+  const shortcuts = createPlayerShortcuts({
+    onPlayPause: () => {
+      // Toggle play/pause - implement based on your player logic
+      toastNotifications.info('Play/Pause');
+    },
+    onVolumeUp: () => {
+      toastNotifications.info('Volume Up');
+    },
+    onVolumeDown: () => {
+      toastNotifications.info('Volume Down');
+    },
+    onMute: () => {
+      toastNotifications.info('Mute/Unmute');
+    },
+    onFullscreen: toggleFullscreen,
+    onChannelUp: () => handlePlayerNavigation('ArrowRight'),
+    onChannelDown: () => handlePlayerNavigation('ArrowLeft'),
+    onShowInfo: () => setShowInfo(true),
+    onShowGuide: () => setShowFullGuide(true),
+    onShowFavorites: () => {
+      // Show favorites - could filter channel list
+      toastNotifications.info('Favorites');
+    },
+    onSearch: openSearch,
+    onBack: () => {
+      if (showInfo) setShowInfo(false);
+      else if (showFullGuide) setShowFullGuide(false);
+      else if (showNowNext) setShowNowNext(false);
+      else if (isSearchOpen) closeSearch();
+      else if (showShortcutsHelp) setShowShortcutsHelp(false);
+    },
+  });
+
+  useKeyboardShortcuts({
+    enabled: !showParentalLockOverlay && !showParentalLockSettings,
+    shortcuts: [
+      ...shortcuts,
+      {
+        key: '?',
+        description: 'Show keyboard shortcuts help',
+        action: () => setShowShortcutsHelp(prev => !prev),
+      },
+    ],
+  });
 
   const handleUnlockSuccess = useCallback(async (pin: string) => {
     const success = await parentalLock.requestUnlock(pin);
@@ -168,31 +300,6 @@ function App({ profileSession }: AppProps) {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isElectron, selectedChannel, channelIndex, updateSetting, audioOnlyMode, updateProfileData]);
-
-  // Setup player state callback
-  useEffect(() => {
-    playerAdapter.onStateChange((state) => {
-      updateState(state, selectedChannel?.name);
-    });
-  }, [selectedChannel, updateState]);
-
-  // Use parsed channels if available, otherwise use mock data
-  const activeChannels = channels.length > 0 ? channels : mockChannels;
-  const activeCategories = channels.length > 0 
-    ? [
-        { name: 'すべて', count: channels.length },
-        ...Object.keys(categories).map(cat => ({
-          name: cat,
-          count: categories[cat].length
-        }))
-      ]
-    : mockCategories;
-
-  const filteredChannels = selectedCategory === 'すべて'
-    ? activeChannels
-    : channels.length > 0
-      ? (categories[selectedCategory] || [])
-      : mockChannels.filter(c => c.category === selectedCategory);
 
   // Numeric input handling
   const handleNumericChannelSelect = useCallback(async (number: number) => {
@@ -634,6 +741,9 @@ function App({ profileSession }: AppProps) {
       playChannelWithFallback(channel)
         .then((result) => {
           if (result.success) {
+            // Track in recent channels
+            recentChannels.addRecentChannel(channel);
+            
             // Switch audio normalization to new channel
             const channelId = String(channel.id);
             audioNormalization.switchChannel(channelId).catch(err => {
@@ -643,10 +753,14 @@ function App({ profileSession }: AppProps) {
             setFocusArea('player');
             setShowInfo(true);
             setTimeout(() => setShowInfo(false), 3000);
+            
+            // Show success notification
+            toastNotifications.success(`Now playing: ${channel.name}`);
           } else {
             console.error('[App] Playback failed:', result.error);
             updateState('error', channel.name, result.error || 'All URLs failed');
             setTimeout(() => clearError(), 5000);
+            toastNotifications.error('Playback failed');
           }
         })
         .catch((error) => {
@@ -822,6 +936,116 @@ function App({ profileSession }: AppProps) {
       <DonationJar
         isOpen={showDonationJar}
         onClose={() => setShowDonationJar(false)}
+      />
+
+      {/* Channel Search Modal */}
+      <ChannelSearchModal
+        isOpen={isSearchOpen}
+        searchQuery={searchQuery}
+        results={searchResults}
+        selectedIndex={searchSelectedIndex}
+        onQueryChange={updateQuery}
+        onSelect={async (channel) => {
+          const channelId = typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id;
+          const index = filteredChannels.findIndex(ch => {
+            const chId = typeof ch.id === 'string' ? parseInt(ch.id, 16) || 0 : ch.id;
+            return chId === channelId;
+          });
+          if (index >= 0) {
+            setChannelIndex(index);
+            setSelectedChannel(channel);
+            clearError();
+            updateState('buffering', channel.name);
+            
+            const playResult = await playChannelWithFallback(channel);
+            if (playResult.success) {
+              recentChannels.addRecentChannel(channel);
+              toastNotifications.success(`Now playing: ${channel.name}`);
+              setFocusArea('player');
+            } else {
+              toastNotifications.error('Playback failed');
+            }
+          }
+          closeSearch();
+        }}
+        onClose={closeSearch}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        isOpen={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+      />
+
+      {/* Status Indicator */}
+      {selectedChannel && (
+        <StatusIndicator
+          connectionStatus={
+            playbackInfo.state === 'playing' ? 'connected' :
+            playbackInfo.state === 'buffering' ? 'connecting' :
+            playbackInfo.state === 'error' ? 'error' :
+            'disconnected'
+          }
+          streamHealth={{
+            bitrate: 2500000, // TODO: Get real bitrate from player
+            bufferLevel: 3.5, // TODO: Get real buffer level
+            droppedFrames: 0, // TODO: Get real dropped frames
+          }}
+          isRecording={isRecording}
+          isLive={true}
+        />
+      )}
+
+      {/* Channel Info Panel */}
+      {selectedChannel && (
+        <ChannelInfoPanel
+          channel={selectedChannel}
+          currentProgram={
+            nowNext.get(String(selectedChannel.id))?.now ? {
+              title: nowNext.get(String(selectedChannel.id))!.now!.title,
+              startTime: nowNext.get(String(selectedChannel.id))!.now!.start,
+              endTime: nowNext.get(String(selectedChannel.id))!.now!.end,
+              description: nowNext.get(String(selectedChannel.id))!.now!.description,
+            } : null
+          }
+          nextProgram={
+            nowNext.get(String(selectedChannel.id))?.next ? {
+              title: nowNext.get(String(selectedChannel.id))!.next!.title,
+              startTime: nowNext.get(String(selectedChannel.id))!.next!.start,
+              endTime: nowNext.get(String(selectedChannel.id))!.next!.end,
+            } : null
+          }
+          isFavorite={channelFavorites.isFavorite(String(selectedChannel.id))}
+          onToggleFavorite={() => {
+            const channelId = String(selectedChannel.id);
+            const added = channelFavorites.toggleFavorite(channelId);
+            if (added) {
+              toastNotifications.success(`Added ${selectedChannel.name} to favorites`);
+            } else {
+              toastNotifications.info(`Removed ${selectedChannel.name} from favorites`);
+            }
+          }}
+          onRecord={() => {
+            if (isRecording) {
+              stopRecording(String(selectedChannel.id));
+              toastNotifications.info('Recording stopped');
+            } else {
+              startRecording(String(selectedChannel.id), selectedChannel.name);
+              toastNotifications.success('Recording started');
+            }
+          }}
+          onShare={() => {
+            toastNotifications.info('Share feature coming soon!');
+          }}
+          isRecording={isRecording}
+          autoHideDelay={5000}
+        />
+      )}
+
+      {/* Toast Notifications */}
+      <ToastContainer
+        toasts={toastNotifications.toasts}
+        onDismiss={toastNotifications.dismissToast}
       />
     </div>
   );
