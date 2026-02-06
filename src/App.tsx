@@ -18,7 +18,7 @@ import { useParentalLock } from './hooks/useParentalLock';
 import { useUIAutoHide } from './hooks/useUIAutoHide';
 import { useFullscreen } from './hooks/useFullscreen';
 import { useChannelSearch } from './hooks/useChannelSearch';
-import { useKeyboardShortcuts, createPlayerShortcuts } from './hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useRecentChannels } from './hooks/useRecentChannels';
 import { useChannelFavorites } from './hooks/useChannelFavorites';
 import { useToast } from './hooks/useToast';
@@ -245,54 +245,15 @@ function App({ profileSession }: AppProps) {
     return true; // Allowed
   }, [parentalLock]);
 
-  // Global keyboard shortcuts
-  const shortcuts = createPlayerShortcuts({
-    onPlayPause: () => {
-      // Toggle play/pause - implement based on your player logic
-      toastNotifications.info('Play/Pause');
-    },
-    onVolumeUp: () => {
-      increaseVolume();
-    },
-    onVolumeDown: () => {
-      decreaseVolume();
-    },
-    onMute: () => {
-      toggleMute();
-    },
-    onFullscreen: toggleFullscreen,
-    onChannelUp: () => handlePlayerNavigation('ArrowRight'),
-    onChannelDown: () => handlePlayerNavigation('ArrowLeft'),
-    onShowInfo: () => setShowInfo(true),
-    onShowGuide: () => setShowFullGuide(true),
-    onShowFavorites: () => {
-      // Show favorites - could filter channel list
-      toastNotifications.info('Favorites');
-    },
-    onSearch: openSearch,
-    onBack: () => {
-      if (showInfo) setShowInfo(false);
-      else if (showFullGuide) setShowFullGuide(false);
-      else if (showNowNext) setShowNowNext(false);
-      else if (isSearchOpen) closeSearch();
-      else if (showShortcutsHelp) setShowShortcutsHelp(false);
-      else if (showChannelGrid) setShowChannelGrid(false);
-    },
-  });
-
+  // Feature-specific keyboard shortcuts (non-conflicting with main handleKeyDown)
+  // NOTE: Do NOT add keys already handled by handleKeyDown (arrows, Escape, i, g, e, l, o, f, F11, Ctrl+D, Ctrl+Shift+P, Enter, numeric)
   useKeyboardShortcuts({
     enabled: !showParentalLockOverlay && !showParentalLockSettings,
     shortcuts: [
-      ...shortcuts,
       {
         key: '?',
         description: 'Show keyboard shortcuts help',
         action: () => setShowShortcutsHelp(prev => !prev),
-      },
-      {
-        key: 'g',
-        description: 'Toggle channel grid view',
-        action: () => setShowChannelGrid(prev => !prev),
       },
       {
         key: 't',
@@ -318,11 +279,6 @@ function App({ profileSession }: AppProps) {
               }
             });
         },
-      },
-      {
-        key: 'a',
-        description: 'Toggle watch analytics',
-        action: () => setShowAnalytics(prev => !prev),
       },
       {
         key: 'c',
@@ -387,26 +343,23 @@ function App({ profileSession }: AppProps) {
 
   // TV Mode: Clean shutdown on window close
   useEffect(() => {
-    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
+      // NOTE: beforeunload does NOT wait for async callbacks.
+      // Critical state (lastChannelId, volume, etc.) is already persisted
+      // via updateSetting() when changed. VLC cleanup is handled by the
+      // main process 'will-quit' handler. This is best-effort only.
       if (isElectron && selectedChannel) {
         try {
-          // Stop playback cleanly
-          console.log('[TV Mode] Stopping playback for shutdown');
-          await playerAdapter.stop();
+          // Fire-and-forget — these may or may not complete before window closes
+          playerAdapter.stop().catch(() => {});
+          saveLastChannel(selectedChannel, channelIndex, updateSetting);
           
-          // Save last channel
-          await saveLastChannel(selectedChannel, channelIndex, updateSetting);
-          
-          // Save fullscreen state (already persisted by useFullscreen hook)
-          
-          // Save audio-only mode if applicable
           if (audioOnlyMode) {
-            await updateProfileData({ audioOnlyMode: true });
+            updateProfileData({ audioOnlyMode: true });
           }
           
-          // Save profile
-          await window.electron.profile.save();
-          console.log('[TV Mode] Clean shutdown complete');
+          window.electron.profile.save().catch(() => {});
+          console.log('[TV Mode] Shutdown cleanup initiated');
         } catch (err) {
           console.error('[TV Mode] Shutdown error:', err);
         }
@@ -640,42 +593,8 @@ function App({ profileSession }: AppProps) {
     return unsubscribe;
   }, [profile, selectedChannel, channelIndex, audioNormalization, updateSetting]);
 
-  // Restore last channel when profile loads
-  useEffect(() => {
-    if (!hasRestoredChannel.current && channels.length > 0 && settings.lastChannelId) {
-      console.log('[App] Restoring last channel:', settings.lastChannelId);
-      
-      const result = findChannelById(channels, settings.lastChannelId);
-      if (result) {
-        setSelectedChannel(result.channel);
-        setChannelIndex(result.index);
-        
-        // Restore last category if available
-        if (settings.lastCategory) {
-          setSelectedCategory(settings.lastCategory);
-        }
-        
-        hasRestoredChannel.current = true;
-        console.log('[App] Last channel restored:', result.channel.name);
-        
-        // Auto-play last channel
-        clearError();
-        updateState('buffering', result.channel.name);
-        playChannelWithFallback(result.channel).then(playResult => {
-          if (!playResult.success) {
-            console.error('[App] Failed to play last channel:', playResult.error);
-          } else {
-            // Start audio monitoring
-            const channelId = String(result.channel.id);
-            audioNormalization.switchChannel(channelId);
-          }
-        });
-      } else {
-        console.warn('[App] Last channel not found in playlist');
-        hasRestoredChannel.current = true;
-      }
-    }
-  }, [channels, settings.lastChannelId, settings.lastCategory, audioNormalization, playChannelWithFallback, clearError, updateState]);
+  // NOTE: Channel restore is handled by the "TV Mode: Auto-play last channel" effect above.
+  // That effect uses activeChannels (category-filtered) which is the correct source.
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -710,10 +629,13 @@ function App({ profileSession }: AppProps) {
         return;
       }
 
-      e.preventDefault();
-
       // TV Mode: ESC hides overlays, returns to playback
       if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isSearchOpen) {
+          closeSearch();
+          return;
+        }
         if (showDonationJar) {
           setShowDonationJar(false);
           return;
@@ -734,6 +656,22 @@ function App({ profileSession }: AppProps) {
           setShowInfo(false);
           return;
         }
+        if (showShortcutsHelp) {
+          setShowShortcutsHelp(false);
+          return;
+        }
+        if (showChannelGrid) {
+          setShowChannelGrid(false);
+          return;
+        }
+        if (showAnalytics) {
+          setShowAnalytics(false);
+          return;
+        }
+        if (showSleepTimer) {
+          setShowSleepTimer(false);
+          return;
+        }
         
         // Return to playback
         setFocusArea('player');
@@ -741,11 +679,13 @@ function App({ profileSession }: AppProps) {
       }
 
       if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
         setShowInfo(prev => !prev);
         return;
       }
 
       if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
         setShowNowNext(prev => !prev);
         if (selectedChannel && !showNowNext) {
           const channelId = String(selectedChannel.id);
@@ -755,11 +695,13 @@ function App({ profileSession }: AppProps) {
       }
 
       if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
         setShowFullGuide(prev => !prev);
         return;
       }
 
       if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
         if (isElectron) {
           loadXmltvFile();
         }
@@ -767,13 +709,15 @@ function App({ profileSession }: AppProps) {
       }
 
       if (e.key === 'o' || e.key === 'O') {
+        e.preventDefault();
         if (isElectron) {
           openPlaylist();
         }
         return;
       }
 
-      if (e.key === 'f' || e.key === 'F') {
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
         if (selectedChannel) {
           const channelId = typeof selectedChannel.id === 'string'
             ? parseInt(selectedChannel.id, 16) || 0
@@ -783,18 +727,39 @@ function App({ profileSession }: AppProps) {
         return;
       }
 
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        setShowAnalytics(prev => !prev);
+        return;
+      }
+
+      if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        toggleMute();
+        return;
+      }
+
+      // Focus-area-specific navigation (arrows, Enter, etc.)
       if (focusArea === 'categories') {
+        e.preventDefault();
         handleCategoryNavigation(e.key);
       } else if (focusArea === 'channels') {
+        e.preventDefault();
         handleChannelNavigation(e.key);
       } else if (focusArea === 'player') {
+        e.preventDefault();
         handlePlayerNavigation(e.key);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusArea, categoryIndex, channelIndex, filteredChannels.length, selectedChannel, isElectron, showDonationJar, showParentalLockSettings, showFullGuide, showNowNext, showInfo, showUI, resetTimer, toggleFullscreen]);
+  }, [focusArea, categoryIndex, channelIndex, filteredChannels.length, selectedChannel, isElectron,
+      showDonationJar, showParentalLockSettings, showFullGuide, showNowNext, showInfo,
+      showShortcutsHelp, showChannelGrid, showAnalytics, showSleepTimer, isSearchOpen,
+      showUI, resetTimer, toggleFullscreen, toggleMute, closeSearch,
+      handleNumericKeyPress, handleCategoryNavigation, handleChannelNavigation, handlePlayerNavigation,
+      refreshNowNext, toggleFavorite, openPlaylist, loadXmltvFile]);
 
   const handleCategoryNavigation = useCallback((key: string) => {
     // Throttle navigation to prevent hold-down spam
@@ -1169,7 +1134,8 @@ function App({ profileSession }: AppProps) {
         volume={volume}
         isMuted={isMuted}
         isVisible={isVolumeVisible}
-        icon={getVolumeIcon()}
+        onVolumeChange={setVolume}
+        getVolumeIcon={getVolumeIcon}
       />
 
       {/* Channel Number Overlay */}
@@ -1209,7 +1175,7 @@ function App({ profileSession }: AppProps) {
       {import.meta.env.DEV && performanceMonitor.metrics && (
         <PerformanceMonitor
           metrics={performanceMonitor.metrics}
-          performanceGrade={performanceMonitor.getPerformanceGrade()}
+          grade={performanceMonitor.getPerformanceGrade()}
         />
       )}
 

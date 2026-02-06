@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { RecordingInfo } from '../types/electron';
 
 interface RecordingOverlayProps {
@@ -7,15 +7,25 @@ interface RecordingOverlayProps {
 }
 
 export const RecordingOverlay: React.FC<RecordingOverlayProps> = ({ recordingInfo, onStopRecording }) => {
-  const duration = useMemo(() => {
-    if (!recordingInfo) return '00:00';
-    
-    const now = Date.now();
-    const elapsed = Math.floor((now - recordingInfo.startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
-    
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const [duration, setDuration] = useState('00:00');
+
+  // Update duration every second while recording
+  useEffect(() => {
+    if (!recordingInfo) {
+      setDuration('00:00');
+      return;
+    }
+
+    const updateDuration = () => {
+      const elapsed = Math.floor((Date.now() - recordingInfo.startTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      setDuration(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateDuration(); // Set immediately
+    const interval = setInterval(updateDuration, 1000);
+    return () => clearInterval(interval);
   }, [recordingInfo]);
 
   if (!recordingInfo) return null;

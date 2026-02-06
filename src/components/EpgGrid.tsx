@@ -8,8 +8,8 @@
  * - Program blocks with progress bars
  */
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import React, { useRef, useEffect, useState, useCallback, useMemo, memo } from 'react';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import { EpgStore, EpgProgram } from '../epg/EpgStore';
 import type { Channel } from '../types/channel';
 import type { Channel as MockChannel } from '../data/mockData';
@@ -41,6 +41,66 @@ const CHANNEL_ROW_HEIGHT = 60;
 const TIME_BLOCK_WIDTH_PX = 200; // px per time block
 const CHANNEL_COLUMN_WIDTH = 180;
 const TIME_RULER_HEIGHT = 50;
+
+// Data passed to virtualized Row via itemData prop
+interface RowItemData {
+  channels: (Channel | MockChannel)[];
+  focusedChannelIndex: number;
+  favorites: number[];
+  buildProgramBlocks: (channelId: string) => ProgramBlock[];
+}
+
+// Extracted Row component — stable reference for react-window virtualization
+const Row = memo(({ index, style, data }: ListChildComponentProps<RowItemData>) => {
+  const { channels, focusedChannelIndex, favorites, buildProgramBlocks } = data;
+  const channel = channels[index];
+  const channelId = String(channel.id);
+  const isFocused = index === focusedChannelIndex;
+  const isFavorite = favorites.includes(
+    typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id
+  );
+
+  const blocks = buildProgramBlocks(channelId);
+
+  return (
+    <div style={style} className={`${styles.row} ${isFocused ? styles.focused : ''}`}>
+      <div className={styles.channelCell}>
+        <div className={styles.channelLogo}>
+          {channel.logo ? (
+            <img src={channel.logo} alt={channel.name} />
+          ) : (
+            <div className={styles.placeholder}>{channel.name[0]}</div>
+          )}
+        </div>
+        <div className={styles.channelName}>
+          {isFavorite && <span className={styles.star}>★</span>}
+          {channel.name}
+        </div>
+      </div>
+      <div className={styles.programsCell}>
+        {blocks.map((block, idx) => (
+          <div
+            key={idx}
+            className={`${styles.programBlock} ${block.isNow ? styles.nowPlaying : ''}`}
+            style={{
+              left: block.left,
+              width: block.width
+            }}
+            title={`${block.program.title}\n${formatTime(block.program.startMs)} - ${formatTime(block.program.endMs)}`}
+          >
+            <div className={styles.programTitle}>{block.program.title}</div>
+            {block.program.category && (
+              <div className={styles.programCategory}>{block.program.category}</div>
+            )}
+            {block.isNow && (
+              <div className={styles.progressBar} style={{ width: `${block.progress}%` }} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
 
 export const EpgGrid: React.FC<EpgGridProps> = ({
   epgStore,
@@ -235,56 +295,13 @@ export const EpgGrid: React.FC<EpgGridProps> = ({
     setFocusedTimeMs(centerTimeMs);
   };
 
-  // Row renderer for virtualized list
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const channel = channels[index];
-    const channelId = String(channel.id);
-    const isFocused = index === focusedChannelIndex;
-    const isFavorite = favorites.includes(
-      typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id
-    );
-
-    const blocks = buildProgramBlocks(channelId);
-
-    return (
-      <div style={style} className={`${styles.row} ${isFocused ? styles.focused : ''}`}>
-        <div className={styles.channelCell}>
-          <div className={styles.channelLogo}>
-            {channel.logo ? (
-              <img src={channel.logo} alt={channel.name} />
-            ) : (
-              <div className={styles.placeholder}>{channel.name[0]}</div>
-            )}
-          </div>
-          <div className={styles.channelName}>
-            {isFavorite && <span className={styles.star}>★</span>}
-            {channel.name}
-          </div>
-        </div>
-        <div className={styles.programsCell}>
-          {blocks.map((block, idx) => (
-            <div
-              key={idx}
-              className={`${styles.programBlock} ${block.isNow ? styles.nowPlaying : ''}`}
-              style={{
-                left: block.left,
-                width: block.width
-              }}
-              title={`${block.program.title}\n${formatTime(block.program.startMs)} - ${formatTime(block.program.endMs)}`}
-            >
-              <div className={styles.programTitle}>{block.program.title}</div>
-              {block.program.category && (
-                <div className={styles.programCategory}>{block.program.category}</div>
-              )}
-              {block.isNow && (
-                <div className={styles.progressBar} style={{ width: `${block.progress}%` }} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  // Stable itemData for virtualized Row (memoized to prevent unnecessary re-renders)
+  const rowItemData = useMemo<RowItemData>(() => ({
+    channels,
+    focusedChannelIndex,
+    favorites,
+    buildProgramBlocks,
+  }), [channels, focusedChannelIndex, favorites, buildProgramBlocks]);
 
   const totalWidth = timeToPx(timeRange.endMs);
 
@@ -325,6 +342,7 @@ export const EpgGrid: React.FC<EpgGridProps> = ({
           itemCount={channels.length}
           itemSize={CHANNEL_ROW_HEIGHT}
           width={window.innerWidth - 40}
+          itemData={rowItemData}
         >
           {Row}
         </List>
