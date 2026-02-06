@@ -34,6 +34,11 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
       })
     : channels;
 
+  // Reset selectedIndex when filter changes to avoid out-of-bounds
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filter]);
+
   // Keyboard navigation
   useEffect(() => {
     if (!isVisible) return;

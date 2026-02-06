@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { EpgNowNext } from '../types/epg';
 import styles from './NowNextOverlay.module.css';
 
@@ -17,19 +17,19 @@ export const NowNextOverlay: React.FC<NowNextOverlayProps> = ({
   visible,
   onHide
 }) => {
-  const [autoHideTimer, setAutoHideTimer] = useState<NodeJS.Timeout | null>(null);
+  // Use ref for onHide to avoid effect restart when parent doesn't memoize
+  const onHideRef = useRef(onHide);
+  onHideRef.current = onHide;
 
   // Auto-hide after 5 seconds
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
-        onHide();
+        onHideRef.current();
       }, 5000);
-      
-      setAutoHideTimer(timer);
       return () => clearTimeout(timer);
     }
-  }, [visible, onHide]);
+  }, [visible]);
 
   if (!visible) return null;
 

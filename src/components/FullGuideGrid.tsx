@@ -74,13 +74,15 @@ export const FullGuideGrid: React.FC<FullGuideGridProps> = ({
         const endTime = timeSlots[timeSlots.length - 1].start + SLOT_DURATION;
         const channelIds = channels.map(c => c.id);
 
-        const guideWindow = await window.electron.epg.getGuideWindow(
+        const guideWindow = await window.electron?.epg?.getGuideWindow?.(
           channelIds,
           startTime,
           endTime
         );
 
-        setGuideData(guideWindow.data);
+        if (guideWindow) {
+          setGuideData(guideWindow.data);
+        }
       } catch (err) {
         console.error('Failed to load guide data:', err);
       } finally {

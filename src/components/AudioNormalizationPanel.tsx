@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { AudioNormalizationSettings, ChannelAudioProfile } from '../types/audio-normalization';
 
 interface AudioNormalizationPanelProps {
@@ -20,6 +20,11 @@ export const AudioNormalizationPanel: React.FC<AudioNormalizationPanelProps> = (
   const [customGain, setCustomGain] = useState<string>(
     currentChannelProfile?.userGainOverride?.toString() ?? '0'
   );
+
+  // Sync customGain when the channel profile changes (e.g., switching channels)
+  useEffect(() => {
+    setCustomGain(currentChannelProfile?.userGainOverride?.toString() ?? '0');
+  }, [currentChannelProfile?.channelId, currentChannelProfile?.userGainOverride]);
 
   const handleToggle = () => {
     onUpdateSettings({ enabled: !settings.enabled });

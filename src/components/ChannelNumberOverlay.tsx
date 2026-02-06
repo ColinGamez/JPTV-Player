@@ -3,7 +3,7 @@
  * Shows channel number input with timeout
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './ChannelNumberOverlay.css';
 
 interface ChannelNumberOverlayProps {
@@ -21,6 +21,10 @@ export const ChannelNumberOverlay: React.FC<ChannelNumberOverlayProps> = ({
 }) => {
   const [progress, setProgress] = useState(100);
 
+  // Use ref for onTimeout to prevent interval restart when parent doesn't memoize
+  const onTimeoutRef = useRef(onTimeout);
+  onTimeoutRef.current = onTimeout;
+
   useEffect(() => {
     if (!isVisible) {
       setProgress(100);
@@ -35,12 +39,12 @@ export const ChannelNumberOverlay: React.FC<ChannelNumberOverlayProps> = ({
 
       if (remaining === 0) {
         clearInterval(interval);
-        onTimeout?.();
+        onTimeoutRef.current?.();
       }
     }, 16); // 60fps
 
     return () => clearInterval(interval);
-  }, [isVisible, timeout, onTimeout]);
+  }, [isVisible, timeout]);
 
   if (!isVisible) return null;
 

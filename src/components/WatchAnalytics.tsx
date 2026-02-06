@@ -87,9 +87,9 @@ export const WatchAnalytics: React.FC<WatchAnalyticsProps> = ({
           <div className="analytics-section">
             <h3>Recent Activity</h3>
             <div className="daily-bars">
-              {stats.dailyUsage.map((day) => {
+              {(() => {
                 const maxDaily = Math.max(...stats.dailyUsage.map(d => d.totalTimeMs), 1);
-                return (
+                return stats.dailyUsage.map((day) => (
                   <div key={day.date} className="daily-bar">
                     <div
                       className="daily-fill"
@@ -99,8 +99,8 @@ export const WatchAnalytics: React.FC<WatchAnalyticsProps> = ({
                       {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
                     </span>
                   </div>
-                );
-              })}
+                ));
+              })()}
             </div>
           </div>
         )}
