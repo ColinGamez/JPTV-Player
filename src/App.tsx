@@ -27,6 +27,9 @@ import { useVolumeControl } from './hooks/useVolumeControl';
 import { usePerformanceMonitor } from './hooks/usePerformanceMonitor';
 import { useTheme } from './hooks/useTheme';
 import { useSleepTimer } from './hooks/useSleepTimer';
+import { useChannelSort } from './hooks/useChannelSort';
+import { useScreenshot } from './hooks/useScreenshot';
+import { useWatchAnalytics } from './hooks/useWatchAnalytics';
 import { VlcPlayerAdapter } from './player/VlcPlayerAdapter';
 import CategoryRail from './components/CategoryRail';
 import ChannelList from './components/ChannelList';
@@ -51,6 +54,8 @@ import { PerformanceMonitor } from './components/PerformanceMonitor';
 import { ChannelGrid } from './components/ChannelGrid';
 import { ThemeSelector } from './components/ThemeSelector';
 import { SleepTimerOverlay, SleepTimerBadge } from './components/SleepTimer';
+import { ScreenshotFlash } from './components/ScreenshotFlash';
+import { WatchAnalytics } from './components/WatchAnalytics';
 import styles from './App.module.css';
 
 type FocusArea = 'categories' | 'channels' | 'player';
@@ -78,6 +83,7 @@ function App({ profileSession }: AppProps) {
   const [showChannelGrid, setShowChannelGrid] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [showSleepTimer, setShowSleepTimer] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [pendingLockAction, setPendingLockAction] = useState<{ type: 'category' | 'channel', id: string, callback: () => void } | null>(null);
   const hasRestoredChannel = useRef(false);
   const lastNavigationTime = useRef<number>(0);
@@ -203,10 +209,21 @@ function App({ profileSession }: AppProps) {
 
   // New features: Sleep Timer
   const sleepTimer = useSleepTimer(() => {
-    // When timer ends, stop playback
     playerAdapter.stop();
     toastNotifications.info('Sleep timer ended — playback stopped');
   });
+
+  // New features: Channel Sorting
+  const channelSort = useChannelSort({
+    recentChannelIds: recentChannels.recentChannels.map(ch => String(ch.id)),
+    favoriteIds: channelFavorites.favorites.map(String),
+  });
+
+  // New features: Screenshot Capture
+  const screenshot = useScreenshot();
+
+  // New features: Watch Analytics
+  const watchAnalytics = useWatchAnalytics();
 
   // Parental lock check helper
   const checkParentalLock = useCallback((type: 'category' | 'channel', id: string, callback: () => void) => {
@@ -280,6 +297,23 @@ function App({ profileSession }: AppProps) {
         key: 'z',
         description: 'Toggle sleep timer',
         action: () => setShowSleepTimer(prev => !prev),
+      },
+      {
+        key: 's',
+        description: 'Capture screenshot',
+        action: () => {
+          screenshot.captureScreenshot(videoRef.current, selectedChannel?.name || 'Unknown')
+            .then(result => {
+              if (result) {
+                toastNotifications.success('Screenshot captured!');
+              }
+            });
+        },
+      },
+      {
+        key: 'a',
+        description: 'Toggle watch analytics',
+        action: () => setShowAnalytics(prev => !prev),
       },
     ],
   });
@@ -1182,6 +1216,18 @@ function App({ profileSession }: AppProps) {
         isActive={sleepTimer.isActive}
         remainingFormatted={sleepTimer.formatRemaining()}
         onClick={() => setShowSleepTimer(true)}
+      />
+
+      {/* Screenshot Flash */}
+      <ScreenshotFlash isVisible={screenshot.showFlash} />
+
+      {/* Watch Analytics */}
+      <WatchAnalytics
+        stats={watchAnalytics.stats}
+        formatDuration={watchAnalytics.formatDuration}
+        isVisible={showAnalytics}
+        onClose={() => setShowAnalytics(false)}
+        onClearHistory={watchAnalytics.clearHistory}
       />
     </div>
   );
