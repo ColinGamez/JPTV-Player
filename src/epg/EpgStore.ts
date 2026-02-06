@@ -58,6 +58,9 @@ export class EpgStore {
       sortedStarts
     });
 
+    // Clear stale search index entries before re-indexing
+    this.removeChannelFromSearchIndex(channelId);
+
     // Build search index for this channel
     this.indexChannelForSearch(channelId, sorted);
   }
@@ -270,6 +273,21 @@ export class EpgStore {
       }
     }
     return result;
+  }
+
+  /**
+   * Remove stale search index entries for a channel (before re-indexing)
+   */
+  private removeChannelFromSearchIndex(channelId: string): void {
+    for (const [token, searchToken] of this.searchIndex) {
+      searchToken.programRefs = searchToken.programRefs.filter(
+        ref => ref.channelId !== channelId
+      );
+      // Clean up empty tokens
+      if (searchToken.programRefs.length === 0) {
+        this.searchIndex.delete(token);
+      }
+    }
   }
 
   /**

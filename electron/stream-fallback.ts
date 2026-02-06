@@ -105,7 +105,6 @@ export class StreamFallbackManager {
 
     const failedUrl = state.urls[state.currentIndex];
     state.failedUrls.add(failedUrl);
-    state.retryCount++;
 
     this.logger?.warn('URL marked failed', { 
       channelId, 
@@ -114,8 +113,9 @@ export class StreamFallbackManager {
       retryCount: state.retryCount
     });
 
-    // Check if we should retry this URL
+    // Check if we should retry this URL (before incrementing)
     if (state.retryCount < this.maxRetriesPerUrl) {
+      state.retryCount++;
       this.logger?.info('Retrying same URL', { channelId, url: failedUrl });
       return failedUrl;
     }

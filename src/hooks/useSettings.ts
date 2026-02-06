@@ -47,7 +47,7 @@ export function useSettings() {
     await saveSettings(newSettings);
   }, [saveSettings]);
 
-  const toggleFavorite = useCallback(async (channelId: number) => {
+  const toggleFavorite = useCallback(async (channelId: string) => {
     const current = settingsRef.current;
     const favorites = current.favorites.includes(channelId)
       ? current.favorites.filter(id => id !== channelId)

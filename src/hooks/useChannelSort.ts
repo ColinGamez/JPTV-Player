@@ -3,7 +3,7 @@
  * Provides multiple sorting options for channel lists
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type { Channel } from '../types/channel';
 
 export type SortOption = 
@@ -49,6 +49,10 @@ function getChannelNumber(channel: Channel): number {
 }
 
 export function useChannelSort(context: SortContext = {}) {
+  // Use ref to avoid context object identity causing sortChannels to rebuild
+  const contextRef = useRef(context);
+  contextRef.current = context;
+
   const [sortOption, setSortOption] = useState<SortOption>(() => {
     try {
       const stored = localStorage.getItem('channelSort');
@@ -75,6 +79,7 @@ export function useChannelSort(context: SortContext = {}) {
     if (sortOption === 'default') return channels;
 
     const sorted = [...channels];
+    const ctx = contextRef.current;
 
     switch (sortOption) {
       case 'name-asc':
@@ -90,7 +95,7 @@ export function useChannelSort(context: SortContext = {}) {
         return sorted.sort((a, b) => getChannelNumber(b) - getChannelNumber(a));
 
       case 'recently-watched': {
-        const recentIds = context.recentChannelIds || [];
+        const recentIds = ctx.recentChannelIds || [];
         return sorted.sort((a, b) => {
           const aIdx = recentIds.indexOf(getChannelSortKey(a));
           const bIdx = recentIds.indexOf(getChannelSortKey(b));
@@ -102,7 +107,7 @@ export function useChannelSort(context: SortContext = {}) {
       }
 
       case 'most-watched': {
-        const counts = context.watchCounts || {};
+        const counts = ctx.watchCounts || {};
         return sorted.sort((a, b) => {
           const aCount = counts[getChannelSortKey(a)] || 0;
           const bCount = counts[getChannelSortKey(b)] || 0;
@@ -111,7 +116,7 @@ export function useChannelSort(context: SortContext = {}) {
       }
 
       case 'favorites-first': {
-        const favIds = context.favoriteIds || [];
+        const favIds = ctx.favoriteIds || [];
         return sorted.sort((a, b) => {
           const aFav = favIds.includes(getChannelSortKey(a)) ? 0 : 1;
           const bFav = favIds.includes(getChannelSortKey(b)) ? 0 : 1;
@@ -122,7 +127,7 @@ export function useChannelSort(context: SortContext = {}) {
       default:
         return sorted;
     }
-  }, [sortOption, context]);
+  }, [sortOption]);
 
   const currentSort = useMemo(
     () => SORT_OPTIONS.find(o => o.id === sortOption) || SORT_OPTIONS[0],

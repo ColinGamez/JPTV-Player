@@ -63,6 +63,12 @@ export class VlcPlayerAdapter implements PlayerAdapter {
       this.playDebounceTimer = null;
     }
 
+    // Reject any pending play() promise so callers aren't left hanging
+    if (this.playAbortReject) {
+      this.playAbortReject(new Error('Play cancelled by stop'));
+      this.playAbortReject = null;
+    }
+
     try {
       const result = await window.electronAPI.player.stop();
       if (result.success) {

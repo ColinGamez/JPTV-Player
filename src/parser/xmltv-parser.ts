@@ -65,7 +65,13 @@ function getElementText(element: Element, tagName: string): string | undefined {
 /**
  * Parse XMLTV XML string
  */
+const MAX_XMLTV_SIZE = 50 * 1024 * 1024; // 50 MB
+
 export function parseXmltv(xmlString: string): XmltvData {
+  if (xmlString.length > MAX_XMLTV_SIZE) {
+    throw new Error(`XMLTV data exceeds maximum size of ${MAX_XMLTV_SIZE / 1024 / 1024} MB`);
+  }
+
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlString, 'text/xml');
   

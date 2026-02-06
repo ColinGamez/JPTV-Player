@@ -16,7 +16,7 @@ export interface Profile {
 
 export interface ProfileData {
   // Profile-specific settings and state
-  favorites: number[];
+  favorites: string[];
   channelHistory?: string[];      // Last viewed channels (most recent first)
   lastChannelId?: string;
   lastChannelIndex?: number;

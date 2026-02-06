@@ -195,7 +195,7 @@ interface AppSettings {
   lastChannelId?: string;
   lastChannelIndex?: number;
   channelHistory: string[];
-  favorites: number[];
+  favorites: string[];
   volume: number;
 }
 

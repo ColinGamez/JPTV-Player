@@ -44,7 +44,7 @@ export function useProfileSettings(profileSession: ProfileSession) {
     await updateProfileData({ [key]: value });
   }, [updateProfileData]);
 
-  const toggleFavorite = useCallback(async (channelId: number) => {
+  const toggleFavorite = useCallback(async (channelId: string) => {
     const favorites = profileData.favorites.includes(channelId)
       ? profileData.favorites.filter(id => id !== channelId)
       : [...profileData.favorites, channelId];

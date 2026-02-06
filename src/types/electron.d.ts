@@ -7,7 +7,7 @@ export interface AppSettings {
   lastChannelIndex?: number; // Store the array index for quick access
   lastCategory?: string; // Last selected category for restore
   channelHistory: string[]; // Stack of channel IDs (max 50)
-  favorites: number[];
+  favorites: string[];
   volume: number;
 }
 
