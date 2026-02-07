@@ -6,7 +6,7 @@
  * Includes lifecycle hooks for safe profile switching.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import type { Profile, ProfileSession, CreateProfileRequest, LoginRequest } from '../types/profile';
 
 type ProfileChangeCallback = (newSession: ProfileSession | null, oldSession: ProfileSession | null) => void | Promise<void>;
@@ -281,7 +281,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     setError(null);
   }, []);
 
-  const value: ProfileContextValue = {
+  const value = useMemo<ProfileContextValue>(() => ({
     profiles,
     activeSession,
     isLoading,
@@ -295,7 +295,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     updateProfileData,
     clearError,
     onProfileChange,
-  };
+  }), [profiles, activeSession, isLoading, error,
+       loadProfiles, createProfile, deleteProfile, login,
+       logout, switchProfile, updateProfileData, clearError, onProfileChange]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 };

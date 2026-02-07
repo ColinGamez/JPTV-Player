@@ -64,17 +64,15 @@ export function useSubtitles() {
       if (prev.find(t => t.id === track.id)) return prev;
       return [...prev, track];
     });
-    if (track.isDefault && !activeTrackId) {
-      setActiveTrackId(track.id);
+    if (track.isDefault) {
+      setActiveTrackId(prev => prev ?? track.id);
     }
-  }, [activeTrackId]);
+  }, []);
 
   const removeTrack = useCallback((trackId: string) => {
     setTracks(prev => prev.filter(t => t.id !== trackId));
-    if (activeTrackId === trackId) {
-      setActiveTrackId(null);
-    }
-  }, [activeTrackId]);
+    setActiveTrackId(prev => prev === trackId ? null : prev);
+  }, []);
 
   const selectTrack = useCallback((trackId: string | null) => {
     setActiveTrackId(trackId);

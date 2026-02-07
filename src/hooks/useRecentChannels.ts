@@ -3,7 +3,7 @@
  * Tracks and provides quick access to recently watched channels
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Channel } from '../types/channel';
 
 const MAX_RECENT_CHANNELS = 10;
@@ -96,8 +96,11 @@ export function useRecentChannels() {
       .map(rc => rc.channel);
   }, [recentChannels]);
 
+  // Memoize channel list to avoid new array reference on every render
+  const channelList = useMemo(() => recentChannels.map(rc => rc.channel), [recentChannels]);
+
   return {
-    recentChannels: recentChannels.map(rc => rc.channel),
+    recentChannels: channelList,
     recentWithMetadata: recentChannels,
     addRecentChannel,
     clearRecent,

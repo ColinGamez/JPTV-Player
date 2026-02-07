@@ -65,6 +65,9 @@ type FocusArea = 'categories' | 'channels' | 'player';
 
 const playerAdapter = new VlcPlayerAdapter();
 
+// Placeholder until real stream telemetry is wired up
+const PLACEHOLDER_STREAM_HEALTH = { bitrate: 2500000, bufferLevel: 3.5, droppedFrames: 0 } as const;
+
 interface AppProps {
   profileSession: ProfileSession;
 }
@@ -1128,11 +1131,7 @@ function App({ profileSession }: AppProps) {
             playbackInfo.state === 'error' ? 'error' :
             'disconnected'
           }
-          streamHealth={{
-            bitrate: 2500000, // TODO: Get real bitrate from player
-            bufferLevel: 3.5, // TODO: Get real buffer level
-            droppedFrames: 0, // TODO: Get real dropped frames
-          }}
+          streamHealth={PLACEHOLDER_STREAM_HEALTH}
           isRecording={isRecording}
           isLive={true}
         />

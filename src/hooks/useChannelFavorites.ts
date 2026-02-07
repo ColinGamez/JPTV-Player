@@ -3,7 +3,7 @@
  * Manage favorite channels with persistence
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { Channel } from '../types/channel';
 
 const STORAGE_KEY = 'favoriteChannels';
@@ -93,8 +93,11 @@ export function useChannelFavorites() {
   // Check if at max capacity
   const isMaxReached = favoriteCount >= MAX_FAVORITES;
 
+  // Memoize array conversion to avoid new reference on every render
+  const favoriteIdsArray = useMemo(() => Array.from(favoriteIds), [favoriteIds]);
+
   return {
-    favoriteIds: Array.from(favoriteIds),
+    favoriteIds: favoriteIdsArray,
     favoriteCount,
     isMaxReached,
     isFavorite,
