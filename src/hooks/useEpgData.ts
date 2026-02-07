@@ -40,7 +40,8 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
   // Load EPG stats on mount
   const loadStats = useCallback(async () => {
     try {
-      const result = await window.electron.epg.getStats();
+      const result = await window.electron?.epg?.getStats();
+      if (!result) return;
       setStats({
         loaded: result.isLoaded,
         channelCount: result.channels,
@@ -48,7 +49,7 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
       });
       
       if (result.isLoaded) {
-        const channelList = await window.electron.epg.getAllChannels();
+        const channelList = await window.electron?.epg?.getAllChannels() ?? [];
         setChannels(channelList);
       }
     } catch (err) {
@@ -66,7 +67,7 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
     setError(null);
     
     try {
-      const result = await window.electron.epg.openXmltvFile();
+      const result = await window.electron?.epg?.openXmltvFile();
       
       if (result) {
         await loadStats();
@@ -90,7 +91,7 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
       
       await Promise.all(
         channelIds.map(async (channelId) => {
-          const data = await window.electron.epg.getNowNext(channelId);
+          const data = await window.electron?.epg?.getNowNext(channelId);
           if (data) {
             updates.set(channelId, data);
           }
@@ -117,7 +118,7 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
 
     setLoading(true);
     try {
-      const guideWindow = await window.electron.epg.getGuideWindow(channelIds, startTime, endTime);
+      const guideWindow = await window.electron?.epg?.getGuideWindow(channelIds, startTime, endTime);
       setGuideWindow(guideWindow);
     } catch (err) {
       console.error('Failed to load guide window:', err);
@@ -130,7 +131,7 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
   // Clear all EPG data
   const clearEpg = useCallback(async () => {
     try {
-      await window.electron.epg.clear();
+      await window.electron?.epg?.clear();
       setNowNext(new Map());
       setGuideWindow(null);
       setChannels([]);

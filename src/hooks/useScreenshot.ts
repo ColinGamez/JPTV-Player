@@ -97,10 +97,8 @@ export function useScreenshot() {
 
   const deleteScreenshot = useCallback((id: string) => {
     setScreenshots(prev => prev.filter(s => s.id !== id));
-    if (lastScreenshot?.id === id) {
-      setLastScreenshot(null);
-    }
-  }, [lastScreenshot]);
+    setLastScreenshot(prev => prev?.id === id ? null : prev);
+  }, []);
 
   const clearAllScreenshots = useCallback(() => {
     setScreenshots([]);

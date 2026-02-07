@@ -27,11 +27,6 @@ export function useProfileAudioNormalization(
   // Keep ref in sync
   settingsRef.current = settings;
 
-  // Load profile data on mount
-  useEffect(() => {
-    loadProfileData();
-  }, [profileSession]);
-
   /**
    * Load audio profiles and settings from profile data
    */
@@ -62,6 +57,11 @@ export function useProfileAudioNormalization(
       console.error('Failed to load profile audio data:', error);
     }
   }, [profileSession]);
+
+  // Load profile data on mount and when profile changes
+  useEffect(() => {
+    loadProfileData();
+  }, [loadProfileData]);
 
   /**
    * Persist audio profiles and settings to profile data
@@ -339,12 +339,17 @@ export function useProfileAudioNormalization(
     return profiles.get(channelId);
   }, [profiles]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — flush pending persist and stop monitoring
+  const persistDataRef = useRef(persistData);
+  persistDataRef.current = persistData;
+
   useEffect(() => {
     return () => {
       if (samplingIntervalRef.current) {
         clearTimeout(samplingIntervalRef.current);
       }
+      // Flush any pending debounced persist data on unmount
+      persistDataRef.current();
     };
   }, []);
 

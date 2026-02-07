@@ -59,7 +59,8 @@ export function useSleepTimer(onTimerEnd?: () => void) {
   }, [isActive]);
 
   const startTimer = useCallback((minutes: number) => {
-    const ms = minutes * 60 * 1000;
+    if (minutes <= 0 || !Number.isFinite(minutes)) return;
+    const ms = Math.min(minutes * 60 * 1000, 24 * 60 * 60 * 1000); // Cap at 24h
     endTimeRef.current = Date.now() + ms;
     setTotalMs(ms);
     setRemainingMs(ms);
