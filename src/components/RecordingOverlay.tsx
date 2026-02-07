@@ -71,6 +71,7 @@ export const RecordingOverlay: React.FC<RecordingOverlayProps> = ({ recordingInf
       {onStopRecording && (
         <button
           onClick={onStopRecording}
+          aria-label="Stop recording"
           style={{
             marginLeft: '8px',
             padding: '6px 12px',

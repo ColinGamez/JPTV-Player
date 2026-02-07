@@ -114,7 +114,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
               ★ Favorites ({favorites.length})
             </button>
           </div>
-          <button className="grid-close-btn" onClick={onClose}>✕</button>
+          <button className="grid-close-btn" onClick={onClose} aria-label="Close channel grid">✕</button>
         </div>
 
         <div className="grid-container" ref={gridRef}>

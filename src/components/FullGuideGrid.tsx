@@ -168,12 +168,12 @@ export const FullGuideGrid: React.FC<FullGuideGridProps> = ({
   if (!visible) return null;
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="Program guide">
       <div className={styles.container}>
         {/* Header */}
         <div className={styles.header}>
           <h2 className={styles.title}>Program Guide</h2>
-          <button className={styles.closeButton} onClick={onClose}>
+          <button className={styles.closeButton} onClick={onClose} aria-label="Close program guide">
             ✕
           </button>
         </div>

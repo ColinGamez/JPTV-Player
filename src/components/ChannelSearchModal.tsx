@@ -48,7 +48,7 @@ export const ChannelSearchModal: React.FC<ChannelSearchModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="channel-search-overlay" onClick={onClose}>
+    <div className="channel-search-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Channel search">
       <div className="channel-search-modal" onClick={(e) => e.stopPropagation()}>
         <div className="search-header">
           <div className="search-input-wrapper">
@@ -61,7 +61,7 @@ export const ChannelSearchModal: React.FC<ChannelSearchModalProps> = ({
               onChange={(e) => onQueryChange(e.target.value)}
               autoComplete="off"
             />
-            <button className="search-close-btn" onClick={onClose} title="Close (Esc)">
+            <button className="search-close-btn" onClick={onClose} title="Close (Esc)" aria-label="Close search">
               ✕
             </button>
           </div>

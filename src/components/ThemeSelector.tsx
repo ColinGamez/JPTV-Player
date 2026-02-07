@@ -42,7 +42,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       <div className="theme-selector-modal" onClick={(e) => e.stopPropagation()}>
         <div className="theme-selector-header">
           <h3>🎨 Theme</h3>
-          <button className="theme-close-btn" onClick={onClose}>✕</button>
+          <button className="theme-close-btn" onClick={onClose} aria-label="Close theme selector">✕</button>
         </div>
         <div className="theme-options">
           {themes.map((theme) => {

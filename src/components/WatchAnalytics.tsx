@@ -33,7 +33,7 @@ export const WatchAnalytics: React.FC<WatchAnalyticsProps> = ({
       <div className="analytics-modal" onClick={(e) => e.stopPropagation()}>
         <div className="analytics-header">
           <h2>📊 Watch Analytics</h2>
-          <button className="analytics-close" onClick={onClose}>✕</button>
+          <button className="analytics-close" onClick={onClose} aria-label="Close analytics">✕</button>
         </div>
 
         {/* Summary Cards */}

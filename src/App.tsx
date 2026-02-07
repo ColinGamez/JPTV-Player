@@ -171,6 +171,14 @@ function App({ profileSession }: AppProps) {
         updateState('buffering', channel.name);
         
         const playResult = await playChannelWithFallback(channel);
+        
+        // Guard against stale completion: if user switched channels during async playback,
+        // don't show misleading toast for the old channel
+        const currentChannel = selectedChannelRef.current;
+        if (currentChannel && String(currentChannel.id) !== channelId) {
+          return; // Channel changed while we were starting playback — skip toast
+        }
+        
         if (playResult.success) {
           recentChannels.addRecentChannel(channel);
           toastNotifications.success(`Now playing: ${channel.name}`);
@@ -394,6 +402,13 @@ function App({ profileSession }: AppProps) {
       updateState('buffering', result.channel.name);
       
       const playResult = await playChannelWithFallback(result.channel);
+      
+      // Guard against stale completion from rapid channel switches
+      const currentChannel = selectedChannelRef.current;
+      if (currentChannel && String(currentChannel.id) !== channelId) {
+        return; // Channel changed during playback start
+      }
+      
       if (playResult.success) {
         // Switch audio normalization to new channel
         const channelId = String(result.channel.id);
@@ -837,6 +852,12 @@ function App({ profileSession }: AppProps) {
       
       playChannelWithFallback(channel)
         .then((result) => {
+          // Guard against stale completion from rapid channel switches
+          const currentChannel = selectedChannelRef.current;
+          if (currentChannel && String(currentChannel.id) !== channelId) {
+            return; // Channel changed while we were starting playback
+          }
+          
           if (result.success) {
             // Track in recent channels
             recentChannels.addRecentChannel(channel);
@@ -1166,10 +1187,18 @@ function App({ profileSession }: AppProps) {
         isVisible={showChannelGrid}
         onClose={() => setShowChannelGrid(false)}
         onSelectChannel={async (channel) => {
+          const channelId = String(channel.id);
           setSelectedChannel(channel);
           clearError();
           updateState('buffering', channel.name);
           const playResult = await playChannelWithFallback(channel);
+          
+          // Guard against stale completion from rapid channel switches
+          const currentChannel = selectedChannelRef.current;
+          if (currentChannel && String(currentChannel.id) !== channelId) {
+            return;
+          }
+          
           if (playResult.success) {
             recentChannels.addRecentChannel(channel);
             toastNotifications.success(`Now playing: ${channel.name}`);

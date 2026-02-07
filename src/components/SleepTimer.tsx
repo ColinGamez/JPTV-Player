@@ -38,7 +38,7 @@ export const SleepTimerOverlay: React.FC<SleepTimerOverlayProps> = ({
       <div className="sleep-timer-modal" onClick={(e) => e.stopPropagation()}>
         <div className="sleep-timer-header">
           <h3>🌙 Sleep Timer</h3>
-          <button className="sleep-timer-close" onClick={onClose}>✕</button>
+          <button className="sleep-timer-close" onClick={onClose} aria-label="Close sleep timer">✕</button>
         </div>
 
         {isActive ? (

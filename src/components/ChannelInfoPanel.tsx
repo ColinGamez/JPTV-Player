@@ -128,6 +128,7 @@ export const ChannelInfoPanel: React.FC<ChannelInfoPanelProps> = ({
                   className={`action-btn ${isFavorite ? 'active' : ''}`}
                   onClick={onToggleFavorite}
                   title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 >
                   {isFavorite ? '★' : '☆'}
                 </button>
@@ -137,6 +138,7 @@ export const ChannelInfoPanel: React.FC<ChannelInfoPanelProps> = ({
                   className={`action-btn ${isRecording ? 'active recording' : ''}`}
                   onClick={onRecord}
                   title={isRecording ? 'Stop recording' : 'Start recording'}
+                  aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                 >
                   ⏺
                 </button>
@@ -146,6 +148,7 @@ export const ChannelInfoPanel: React.FC<ChannelInfoPanelProps> = ({
                   className="action-btn"
                   onClick={onShare}
                   title="Share channel"
+                  aria-label="Share channel"
                 >
                   ↗
                 </button>

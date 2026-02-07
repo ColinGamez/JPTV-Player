@@ -243,6 +243,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
       preload: path.join(__dirname, 'preload.js'),
       devTools: isDev // Disable DevTools in production
     },
@@ -319,6 +321,22 @@ function createWindow() {
   // Show window once content is loaded (prevents flash)
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
+  });
+
+  // SECURITY: Prevent navigation away from the app (e.g., via malicious links)
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    // In dev, allow Vite HMR reloads
+    if (isDev && url.startsWith('http://localhost:')) return;
+    // In prod, allow loading the app's own file
+    if (!isDev && url.startsWith('file://')) return;
+    logger?.warn('Blocked navigation attempt', { url });
+    event.preventDefault();
+  });
+
+  // SECURITY: Prevent new window creation (e.g., window.open)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    logger?.warn('Blocked new window attempt', { url });
+    return { action: 'deny' };
   });
 
   // Initialize VLC player after window is ready
@@ -671,7 +689,17 @@ ipcMain.handle('playlist:loadFromPath', async (_event, filePath: string) => {
   }
 
   // Sanitize path to prevent directory traversal
-  const normalizedPath = path.normalize(filePath).replace(/^(\.\.[\\\/])+/, '');
+  const normalizedPath = path.resolve(filePath);
+  
+  // Block paths that still contain traversal sequences after resolution
+  if (normalizedPath.includes('..')) {
+    logger?.warn('Blocked path traversal attempt', { original: filePath, resolved: normalizedPath });
+    return {
+      path: '',
+      content: '',
+      parseResult: { success: false, error: 'Invalid file path' }
+    };
+  }
   
   // Validate file exists
   if (!fs.existsSync(normalizedPath)) {
@@ -1317,16 +1345,22 @@ ipcMain.handle('epg:loadXmltv', async (_event, filePath: string) => {
     return { success: false, error: 'EPG manager not initialized' };
   }
 
+  // Validate and sanitize path
+  if (!filePath || typeof filePath !== 'string') {
+    return { success: false, error: 'Invalid file path' };
+  }
+  const resolvedEpgPath = path.resolve(filePath);
+
   // Validate file extension
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = path.extname(resolvedEpgPath).toLowerCase();
   if (!['.xml', '.xmltv'].includes(ext)) {
-    logger?.warn('Invalid EPG file extension', { filePath, ext });
+    logger?.warn('Invalid EPG file extension', { filePath: resolvedEpgPath, ext });
     return { success: false, error: `Invalid file type: ${ext}. Expected .xml or .xmltv` };
   }
 
   try {
-    logger?.info('Loading XMLTV file', { filePath });
-    const result = await epgManager.loadFromXmltv(filePath);
+    logger?.info('Loading XMLTV file', { filePath: resolvedEpgPath });
+    const result = await epgManager.loadFromXmltv(resolvedEpgPath);
     return result;
   } catch (error) {
     logger?.error('Failed to load XMLTV', { error });
