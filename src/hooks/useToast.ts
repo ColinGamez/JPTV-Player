@@ -16,6 +16,7 @@ export interface Toast {
 }
 
 const DEFAULT_DURATION = 3000;
+const MAX_TOASTS = 5; // Prevent unbounded growth from rapid error cascades
 
 export function useToast() {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -57,7 +58,22 @@ export function useToast() {
       timestamp: Date.now(),
     };
 
-    setToasts(prev => [...prev, toast]);
+    setToasts(prev => {
+      const updated = [...prev, toast];
+      // Evict oldest toasts if over cap
+      if (updated.length > MAX_TOASTS) {
+        const evicted = updated.slice(0, updated.length - MAX_TOASTS);
+        evicted.forEach(t => {
+          const timer = timerMapRef.current.get(t.id);
+          if (timer) {
+            clearTimeout(timer);
+            timerMapRef.current.delete(t.id);
+          }
+        });
+        return updated.slice(-MAX_TOASTS);
+      }
+      return updated;
+    });
 
     // Auto-dismiss after duration (tracked for cleanup)
     if (duration > 0) {

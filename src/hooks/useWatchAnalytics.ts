@@ -68,6 +68,28 @@ export function useWatchAnalytics() {
     saveHistory(sessions);
   }, [sessions]);
 
+  // Flush in-progress session on unmount to avoid data loss
+  useEffect(() => {
+    return () => {
+      const prev = currentSessionRef.current;
+      if (prev) {
+        const duration = Date.now() - prev.startTime;
+        if (duration > 5000) {
+          // Read sessions directly from localStorage since state updates
+          // won't apply during unmount cleanup
+          const existing = loadHistory();
+          const updated = [{
+            channelId: prev.channelId,
+            channelName: prev.channelName,
+            startTime: prev.startTime,
+            duration,
+          }, ...existing].slice(0, MAX_SESSIONS);
+          saveHistory(updated);
+        }
+      }
+    };
+  }, []);
+
   const startWatching = useCallback((channelId: string, channelName: string) => {
     // End any previous session first (read from ref to avoid stale closure)
     const prev = currentSessionRef.current;

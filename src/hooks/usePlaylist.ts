@@ -22,6 +22,8 @@ export function usePlaylist(options?: UsePlaylistOptions) {
   const loadPlaylistFromPath = useCallback(async (path: string) => {
     if (!isElectron) return false;
     
+    // Mark path as attempted immediately to prevent re-triggering on failure
+    lastLoadedPath.current = path;
     setIsLoadingPlaylist(true);
     try {
       console.log(`[Playlist] Loading from saved path: ${path}`);
@@ -33,7 +35,6 @@ export function usePlaylist(options?: UsePlaylistOptions) {
         setChannels(result.parseResult.data.channels);
         setCategories(result.parseResult.data.categories);
         setParseError(null);
-        lastLoadedPath.current = path; // Mark as loaded
         console.log(`[Playlist] Restored ${result.parseResult.data.channels.length} channels from ${path}`);
         if (result.parseResult.skippedCount) {
           console.warn(`[Playlist] Skipped ${result.parseResult.skippedCount} malformed entries`);

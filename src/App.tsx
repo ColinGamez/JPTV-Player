@@ -927,12 +927,14 @@ function App({ profileSession }: AppProps) {
       playerAdapter.getVolume().then(vol => {
         const newVol = Math.min(100, vol + 5);
         playerAdapter.setVolume(newVol);
+        setVolumeLevel(newVol); // Sync hook state so VolumeSlider shows correct value
         updateSetting('volume', newVol);
       });
     } else if (key === 'ArrowDown') {
       playerAdapter.getVolume().then(vol => {
         const newVol = Math.max(0, vol - 5);
         playerAdapter.setVolume(newVol);
+        setVolumeLevel(newVol); // Sync hook state so VolumeSlider shows correct value
         updateSetting('volume', newVol);
       });
     } else if (key === ' ') {
@@ -942,7 +944,7 @@ function App({ profileSession }: AppProps) {
         playerAdapter.resume();
       }
     }
-  }, [updateSetting, selectedChannel, isRecording, startRecording, stopRecording, toggleAudioOnly]);
+  }, [updateSetting, selectedChannel, isRecording, startRecording, stopRecording, toggleAudioOnly, setVolumeLevel]);
 
   // Pre-compute EPG now/next data for selected channel to avoid repeated Map lookups in JSX
   const selectedChannelEpgId = selectedChannel ? String(selectedChannel.id) : '';

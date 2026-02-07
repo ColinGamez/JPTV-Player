@@ -62,15 +62,18 @@ export function useVolumeControl() {
     }
   }, [isMuted]);
 
-  // Increase volume
+  // Increase volume (uses functional updater to avoid stale closure on rapid keypresses)
   const increaseVolume = useCallback(() => {
-    setVolumeLevel(volume + VOLUME_STEP);
-  }, [volume, setVolumeLevel]);
+    setVolume(prev => Math.min(100, prev + VOLUME_STEP));
+    setIsMuted(false);
+    setIsVolumeVisible(true);
+  }, []);
 
-  // Decrease volume
+  // Decrease volume (uses functional updater to avoid stale closure on rapid keypresses)
   const decreaseVolume = useCallback(() => {
-    setVolumeLevel(volume - VOLUME_STEP);
-  }, [volume, setVolumeLevel]);
+    setVolume(prev => Math.max(0, prev - VOLUME_STEP));
+    setIsVolumeVisible(true);
+  }, []);
 
   // Toggle mute
   const toggleMute = useCallback(() => {
