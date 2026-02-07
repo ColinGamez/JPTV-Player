@@ -151,7 +151,6 @@ export class VlcPlayerAdapter implements PlayerAdapter {
     if (this.currentState !== state) {
       this.currentState = state;
       this.stateCallback?.(state);
-      console.log(`[VlcPlayerAdapter] State: ${state}`);
     }
   }
 

@@ -29,7 +29,6 @@ export function usePlaylist(options?: UsePlaylistOptions) {
     loadingRef.current = true;
     setIsLoadingPlaylist(true);
     try {
-      console.log(`[Playlist] Loading from saved path: ${path}`);
       const result = await window.electronAPI.loadPlaylistFromPath(path);
       
       if (result && result.parseResult?.success && result.parseResult.data) {
@@ -38,7 +37,6 @@ export function usePlaylist(options?: UsePlaylistOptions) {
         setChannels(result.parseResult.data.channels);
         setCategories(result.parseResult.data.categories);
         setParseError(null);
-        console.log(`[Playlist] Restored ${result.parseResult.data.channels.length} channels from ${path}`);
         if (result.parseResult.skippedCount) {
           console.warn(`[Playlist] Skipped ${result.parseResult.skippedCount} malformed entries`);
         }
@@ -75,12 +73,10 @@ export function usePlaylist(options?: UsePlaylistOptions) {
             setChannels(result.parseResult.data.channels);
             setCategories(result.parseResult.data.categories);
             setParseError(null);
-            console.log(`[Playlist] Loaded ${result.parseResult.data.channels.length} channels`);
             
             // Save playlist path to profile
             if (updateProfileData && result.path) {
               await updateProfileData({ playlistPath: result.path });
-              console.log(`[Playlist] Saved path to profile: ${result.path}`);
             }
             
             if (result.parseResult.skippedCount) {
@@ -114,7 +110,6 @@ export function usePlaylist(options?: UsePlaylistOptions) {
       return;
     }
     
-    console.log(`[Playlist] Auto-loading saved playlist: ${savedPath}`);
     loadPlaylistFromPath(savedPath);
   }, [profileSession?.data.playlistPath, isLoadingPlaylist, channels.length, loadPlaylistFromPath]);
 

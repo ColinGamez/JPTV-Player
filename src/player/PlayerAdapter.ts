@@ -27,33 +27,28 @@ export class StubPlayerAdapter implements PlayerAdapter {
   private stateCallback?: (state: 'playing' | 'paused' | 'stopped' | 'buffering' | 'error') => void;
 
   async play(url: string): Promise<void> {
-    console.log('[PlayerAdapter] Play:', url);
     this.currentUrl = url;
     this.playing = true;
     this.stateCallback?.('playing');
   }
 
   async stop(): Promise<void> {
-    console.log('[PlayerAdapter] Stop');
     this.playing = false;
     this.currentUrl = '';
     this.stateCallback?.('stopped');
   }
 
   async pause(): Promise<void> {
-    console.log('[PlayerAdapter] Pause');
     this.playing = false;
     this.stateCallback?.('paused');
   }
 
   async resume(): Promise<void> {
-    console.log('[PlayerAdapter] Resume');
     this.playing = true;
     this.stateCallback?.('playing');
   }
 
   async setVolume(volume: number): Promise<void> {
-    console.log('[PlayerAdapter] Set volume:', volume);
     this.volume = Math.max(0, Math.min(100, volume));
   }
 

@@ -42,21 +42,13 @@ export function useChannelFallback(): UseChannelFallbackReturn {
         const urls = (channel as Channel).urls;
         const lastSuccessfulUrl = (channel as Channel).lastSuccessfulUrl;
 
-        console.log('[Fallback] Playing channel with fallback:', {
-          channel: channel.name,
-          urlCount: urls.length,
-          lastSuccessful: lastSuccessfulUrl
-        });
-
         const result = await window.electronAPI.player.playWithFallback(
           channelId,
           urls,
           lastSuccessfulUrl
         );
 
-        if (result.success) {
-          console.log('[Fallback] Playback successful:', result.url);
-        } else {
+        if (!result.success) {
           console.error('[Fallback] All URLs failed for channel:', channel.name);
         }
 
@@ -82,12 +74,9 @@ export function useChannelFallback(): UseChannelFallbackReturn {
     }
 
     try {
-      console.log('[Fallback] Retrying channel:', channelId);
       const result = await window.electronAPI.player.retryFallback(channelId);
       
-      if (result.success) {
-        console.log('[Fallback] Retry successful:', result.url);
-      } else {
+      if (!result.success) {
         console.error('[Fallback] Retry failed:', result.error);
       }
 

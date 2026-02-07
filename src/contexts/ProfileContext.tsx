@@ -63,11 +63,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   // Notify listeners when profile changes
   const notifyProfileChange = useCallback(async (newSession: ProfileSession | null, oldSession: ProfileSession | null) => {
-    console.log('[ProfileContext] Profile change:', {
-      old: oldSession?.profile.name,
-      new: newSession?.profile.name,
-    });
-
     for (const callback of profileChangeCallbacks.current) {
       try {
         await callback(newSession, oldSession);
@@ -202,7 +197,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       
       // Save profile data before logout
       if (oldSession) {
-        console.log('[ProfileContext] Saving profile before logout...');
         await window.electron.profile.save();
       }
       
@@ -213,8 +207,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       await window.electron.profile.logout();
       setActiveSession(null);
       previousSession.current = null;
-      
-      console.log('[ProfileContext] Logout complete');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Logout failed';
       console.error('[ProfileContext] Logout failed:', err);
@@ -237,19 +229,16 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       
       // Save current profile before switching
       if (oldSession) {
-        console.log('[ProfileContext] Saving current profile before switch...');
         await window.electron.profile.save();
       }
       
       // Notify listeners about upcoming switch (for cleanup)
-      console.log('[ProfileContext] Notifying profile switch...');
       await notifyProfileChange(null, oldSession);
       
       // Perform backend logout
       await window.electron.profile.logout();
       
       // Login to new profile
-      console.log('[ProfileContext] Switching to new profile...');
       const session = await window.electron.profile.login(request);
       
       // Update state
@@ -259,7 +248,6 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       // Reload profile list to update timestamps
       await loadProfiles();
       
-      console.log('[ProfileContext] Profile switch complete:', session.profile.name);
       return session;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Profile switch failed';

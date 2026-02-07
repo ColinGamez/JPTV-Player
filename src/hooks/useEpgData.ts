@@ -71,7 +71,6 @@ export function useEpgData(autoRefreshInterval: number = 60000): UseEpgDataRetur
       
       if (result) {
         await loadStats();
-        console.log(`EPG loaded: ${result.parseResult.channelCount} channels, ${result.parseResult.programCount} programs in ${result.parseResult.parseTime}ms`);
       } else {
         setError('Failed to load XMLTV file');
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styles from './DonationJar.module.css';
 
 interface DonationMethod {
@@ -15,6 +15,14 @@ interface DonationJarProps {
 
 export const DonationJar: React.FC<DonationJarProps> = ({ isOpen, onClose }) => {
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const copyTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   const donationMethods: DonationMethod[] = [
     {
@@ -55,7 +63,7 @@ export const DonationJar: React.FC<DonationJarProps> = ({ isOpen, onClose }) => 
     try {
       await navigator.clipboard.writeText(address);
       setCopiedAddress(address);
-      setTimeout(() => setCopiedAddress(null), 2000);
+      copyTimerRef.current = setTimeout(() => setCopiedAddress(null), 2000);
     } catch (err) {
       console.error('Failed to copy address:', err);
     }

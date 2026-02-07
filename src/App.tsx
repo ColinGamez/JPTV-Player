@@ -365,7 +365,6 @@ function App({ profileSession }: AppProps) {
       try {
         await window.electron.profile.save();
         consecutiveSaveFailures = 0; // Reset on success
-        console.log('[App] Auto-saved profile data');
       } catch (err) {
         consecutiveSaveFailures++;
         console.error('[App] Auto-save failed:', err);
@@ -399,7 +398,6 @@ function App({ profileSession }: AppProps) {
           }
           
           window.electron.profile.save().catch(() => {});
-          console.log('[TV Mode] Shutdown cleanup initiated');
         } catch (err) {
           console.error('[TV Mode] Shutdown error:', err);
         }
@@ -461,7 +459,6 @@ function App({ profileSession }: AppProps) {
       
       const result = findChannelById(activeChannels, settings.lastChannelId);
       if (result) {
-        console.log(`[TV Mode] Auto-playing last channel: ${result.channel.name}`);
         setSelectedChannel(result.channel);
         setChannelIndex(result.index);
         
@@ -531,7 +528,6 @@ function App({ profileSession }: AppProps) {
 
   useEffect(() => {
     if (channels.length > 0) {
-      console.log(`Loaded ${channels.length} channels from playlist`);
       // Don't reset if restoring last channel
       if (!hasRestoredChannel.current) {
         setCategoryIndex(0);
@@ -591,7 +587,6 @@ function App({ profileSession }: AppProps) {
   // Window focus/restore handler - show UI briefly when app regains focus
   useEffect(() => {
     const handleFocus = () => {
-      console.log('[TV Mode] Window focused, showing UI');
       showUI();
       resetTimer();
     };
@@ -604,14 +599,8 @@ function App({ profileSession }: AppProps) {
   // Uses refs for selectedChannel/channelIndex to avoid re-subscribing on every channel change
   useEffect(() => {
     const unsubscribe = profile.onProfileChange(async (newSession, oldSession) => {
-      console.log('[App] Profile change detected:', {
-        old: oldSession?.profile.name,
-        new: newSession?.profile.name,
-      });
-
       // Stop playback
       if (selectedChannelRef.current) {
-        console.log('[App] Stopping playback due to profile change');
         try {
           await playerAdapter.stop();
         } catch (err) {
@@ -624,7 +613,6 @@ function App({ profileSession }: AppProps) {
       
       // Save last channel for old profile
       if (oldSession && selectedChannelRef.current) {
-        console.log('[App] Saving last channel for old profile');
         try {
           await saveLastChannel(selectedChannelRef.current, channelIndexRef.current, updateSetting);
         } catch (err) {
@@ -641,8 +629,6 @@ function App({ profileSession }: AppProps) {
       setShowNowNext(false);
       setShowFullGuide(false);
       hasRestoredChannel.current = false;
-
-      console.log('[App] Profile change cleanup complete');
     });
 
     return unsubscribe;

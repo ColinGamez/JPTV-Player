@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Profile } from '../types/profile';
 import styles from './PinEntry.module.css';
 
@@ -19,13 +19,23 @@ export const PinEntry: React.FC<PinEntryProps> = ({
 }) => {
   const [pin, setPin] = useState('');
   const [shake, setShake] = useState(false);
+  const shakeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const submitTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+    };
+  }, []);
 
   // Show shake animation on error
   useEffect(() => {
     if (error) {
       setShake(true);
       setPin(''); // Clear PIN on error
-      setTimeout(() => setShake(false), 500);
+      shakeTimerRef.current = setTimeout(() => setShake(false), 500);
     }
   }, [error]);
 
@@ -42,7 +52,7 @@ export const PinEntry: React.FC<PinEntryProps> = ({
         // Auto-submit only when reaching max PIN length
         if (newPin.length === PIN_LENGTH) {
           // Small delay for visual feedback
-          setTimeout(() => onSubmit(newPin), 200);
+          submitTimerRef.current = setTimeout(() => onSubmit(newPin), 200);
         }
       }
       // Backspace

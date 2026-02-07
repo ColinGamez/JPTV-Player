@@ -25,7 +25,7 @@ export const WatchAnalytics: React.FC<WatchAnalyticsProps> = ({
   if (!isVisible) return null;
 
   const maxChannelTime = stats.channelBreakdown.length > 0
-    ? stats.channelBreakdown[0].totalTimeMs
+    ? Math.max(stats.channelBreakdown[0].totalTimeMs, 1)
     : 1;
 
   return (

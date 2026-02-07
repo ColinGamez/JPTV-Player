@@ -53,8 +53,6 @@ const ProfileApp: React.FC = () => {
           
           if (lastProfile && !lastProfile.hasPin) {
             // Auto-login to last profile (TV mode behavior)
-            console.log('[TV Mode] Auto-login to last profile:', lastProfile.name);
-            
             try {
               await profile.login({ profileId: lastProfile.id });
               setAppState(AppState.Authenticated);
