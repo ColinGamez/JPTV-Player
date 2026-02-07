@@ -14,7 +14,11 @@ export function useVolumeControl() {
   const [volume, setVolume] = useState<number>(() => {
     try {
       const stored = localStorage.getItem(VOLUME_STORAGE_KEY);
-      return stored ? parseInt(stored, 10) : DEFAULT_VOLUME;
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        return isNaN(parsed) ? DEFAULT_VOLUME : Math.max(0, Math.min(100, parsed));
+      }
+      return DEFAULT_VOLUME;
     } catch {
       return DEFAULT_VOLUME;
     }

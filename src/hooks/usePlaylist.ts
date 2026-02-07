@@ -17,13 +17,16 @@ export function usePlaylist(options?: UsePlaylistOptions) {
   const [isElectron] = useState(() => typeof window !== 'undefined' && window.electronAPI !== undefined);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
   const lastLoadedPath = useRef<string | null>(null); // Track loaded path to prevent reloads
+  const loadingRef = useRef(false); // Guard against concurrent loads
 
   // Load playlist from file path
   const loadPlaylistFromPath = useCallback(async (path: string) => {
     if (!isElectron) return false;
+    if (loadingRef.current) return false; // Prevent concurrent loads
     
     // Mark path as attempted immediately to prevent re-triggering on failure
     lastLoadedPath.current = path;
+    loadingRef.current = true;
     setIsLoadingPlaylist(true);
     try {
       console.log(`[Playlist] Loading from saved path: ${path}`);
@@ -49,6 +52,7 @@ export function usePlaylist(options?: UsePlaylistOptions) {
       console.error('[Playlist] Failed to load from path:', error);
       setParseError(error instanceof Error ? error.message : 'Failed to load playlist');
     } finally {
+      loadingRef.current = false;
       setIsLoadingPlaylist(false);
     }
     return false;

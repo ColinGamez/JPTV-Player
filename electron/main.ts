@@ -745,7 +745,16 @@ ipcMain.handle('settings:get', (_event, key: keyof AppSettings) => {
   return settings[key];
 });
 
+const VALID_SETTINGS_KEYS: ReadonlySet<keyof AppSettings> = new Set([
+  'lastPlaylist', 'lastChannelId', 'lastChannelIndex',
+  'channelHistory', 'favorites', 'volume'
+]);
+
 ipcMain.handle('settings:set', (_event, key: keyof AppSettings, value: any) => {
+  if (!VALID_SETTINGS_KEYS.has(key)) {
+    logger?.warn('Rejected invalid settings key', { key });
+    return false;
+  }
   const settings = loadSettings();
   (settings as any)[key] = value;
   saveSettings(settings);
@@ -917,14 +926,21 @@ ipcMain.handle('player:setVolume', async (_event, volume: number) => {
     return { success: false };
   }
 
+  // Validate volume: must be a finite number in range [0, 200]
+  if (typeof volume !== 'number' || !isFinite(volume)) {
+    logger?.warn('setVolume rejected invalid value', { volume });
+    return { success: false };
+  }
+  const clamped = Math.max(0, Math.min(200, Math.round(volume)));
+
   try {
     // Update base volume for audio normalization tracking
-    audioBaseVolume = volume;
+    audioBaseVolume = clamped;
     audioAppliedGainDb = 0; // Reset gain when user manually sets volume
-    const success = vlcPlayer.setVolume(volume);
+    const success = vlcPlayer.setVolume(clamped);
     return { success };
   } catch (error) {
-    logger?.error('SetVolume error', { volume, error });
+    logger?.error('SetVolume error', { volume: clamped, error });
     return { success: false };
   }
 });
@@ -1449,6 +1465,10 @@ ipcMain.handle('epg:getProgramsForDate', async (_event, channelId: string, dateS
 
   try {
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      logger?.warn('epg:getProgramsForDate invalid date string', { dateStr });
+      return [];
+    }
     return epgManager.getProgramsForDate(channelId, date);
   } catch (error) {
     logger?.error('Failed to get programs for date', { error, channelId, dateStr });

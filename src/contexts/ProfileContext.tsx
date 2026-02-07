@@ -44,6 +44,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Guard against concurrent profile operations
+  const operationInProgress = useRef(false);
+  
   // Store profile change callbacks
   const profileChangeCallbacks = useRef<Set<ProfileChangeCallback>>(new Set());
   const previousSession = useRef<ProfileSession | null>(null);
@@ -90,16 +93,18 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     loadProfiles();
   }, []);
 
-  // Save profile data on unmount or when active session changes
+  // Save profile data on unmount only (not on every activeSession change)
+  const activeSessionRef = useRef(activeSession);
+  activeSessionRef.current = activeSession;
   useEffect(() => {
     return () => {
-      if (activeSession) {
+      if (activeSessionRef.current) {
         window.electron.profile.save().catch(err => {
           console.error('[ProfileContext] Failed to save profile on unmount:', err);
         });
       }
     };
-  }, [activeSession]);
+  }, []);
 
   const loadProfiles = useCallback(async () => {
     setIsLoading(true);
@@ -122,6 +127,8 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   }, []);
 
   const createProfile = useCallback(async (request: CreateProfileRequest): Promise<Profile> => {
+    if (operationInProgress.current) throw new Error('Another profile operation is in progress');
+    operationInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -135,11 +142,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setError(errorMessage);
       throw err;
     } finally {
+      operationInProgress.current = false;
       setIsLoading(false);
     }
   }, [loadProfiles]);
 
   const deleteProfile = useCallback(async (profileId: string): Promise<void> => {
+    if (operationInProgress.current) throw new Error('Another profile operation is in progress');
+    operationInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -152,11 +162,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setError(errorMessage);
       throw err;
     } finally {
+      operationInProgress.current = false;
       setIsLoading(false);
     }
   }, [loadProfiles]);
 
   const login = useCallback(async (request: LoginRequest): Promise<ProfileSession> => {
+    if (operationInProgress.current) throw new Error('Another profile operation is in progress');
+    operationInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -171,11 +184,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setError(errorMessage);
       throw err;
     } finally {
+      operationInProgress.current = false;
       setIsLoading(false);
     }
   }, [loadProfiles]);
 
   const logout = useCallback(async (): Promise<void> => {
+    if (operationInProgress.current) throw new Error('Another profile operation is in progress');
+    operationInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -203,11 +219,14 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setError(errorMessage);
       throw err;
     } finally {
+      operationInProgress.current = false;
       setIsLoading(false);
     }
   }, [activeSession, notifyProfileChange]);
 
   const switchProfile = useCallback(async (request: LoginRequest): Promise<ProfileSession> => {
+    if (operationInProgress.current) throw new Error('Another profile operation is in progress');
+    operationInProgress.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -246,6 +265,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setError(errorMessage);
       throw err;
     } finally {
+      operationInProgress.current = false;
       setIsLoading(false);
     }
   }, [activeSession, notifyProfileChange, loadProfiles]);
