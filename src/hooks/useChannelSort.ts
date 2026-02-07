@@ -40,11 +40,10 @@ interface SortContext {
 }
 
 function getChannelSortKey(channel: Channel): string {
-  return typeof channel.id === 'string' ? channel.id : String(channel.id);
+  return channel.id;
 }
 
 function getChannelNumber(channel: Channel): number {
-  if (typeof channel.id === 'number') return channel.id;
   // Try parsing as decimal number first, then fall back to hash-based ordering
   const parsed = parseInt(channel.id, 10);
   if (!isNaN(parsed)) return parsed;

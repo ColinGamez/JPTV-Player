@@ -20,7 +20,7 @@ interface EpgGridProps {
   channels: (Channel | MockChannel)[];
   timeSpanHours: number;
   timeBlockMinutes: number;
-  favorites: number[];
+  favorites: string[];
   onSelectProgram: (program: EpgProgram, channelId: string) => void;
   onFocusChange?: (channelId: string, timeMs: number) => void;
   initialScrollX?: number;
@@ -46,7 +46,7 @@ const TIME_RULER_HEIGHT = 50;
 interface RowItemData {
   channels: (Channel | MockChannel)[];
   focusedChannelIndex: number;
-  favorites: number[];
+  favorites: string[];
   buildProgramBlocks: (channelId: string) => ProgramBlock[];
 }
 
@@ -56,9 +56,7 @@ const Row = memo(({ index, style, data }: ListChildComponentProps<RowItemData>) 
   const channel = channels[index];
   const channelId = String(channel.id);
   const isFocused = index === focusedChannelIndex;
-  const isFavorite = favorites.includes(
-    typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id
-  );
+  const isFavorite = favorites.includes(channelId);
 
   const blocks = buildProgramBlocks(channelId);
 

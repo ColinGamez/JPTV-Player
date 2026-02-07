@@ -1019,23 +1019,15 @@ function App({ profileSession }: AppProps) {
         results={searchResults}
         selectedIndex={searchSelectedIndex}
         onQueryChange={updateQuery}
-        onSelect={async (channel) => {
+        onSelect={(channel) => {
+          // Delegate to the hook's selectCurrent-equivalent logic
+          // which already calls onSelectChannel + closeSearch
           const channelId = String(channel.id);
           const index = filteredChannels.findIndex(ch => String(ch.id) === channelId);
           if (index >= 0) {
-            setChannelIndex(index);
-            setSelectedChannel(channel);
-            clearError();
-            updateState('buffering', channel.name);
-            
-            const playResult = await playChannelWithFallback(channel);
-            if (playResult.success) {
-              recentChannels.addRecentChannel(channel);
-              toastNotifications.success(`Now playing: ${channel.name}`);
-              setFocusArea('player');
-            } else {
-              toastNotifications.error('Playback failed');
-            }
+            // Reuse the same onSelectChannel callback from useChannelSearch
+            selectSearchResult();
+            return;
           }
           closeSearch();
         }}

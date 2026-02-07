@@ -29,19 +29,25 @@ const electronApi = {
   },
 
   // IPC event listeners (for menu events)
-  // Track wrapper functions so removeListener works correctly
+  // Track wrappers by channel name so removeListener can clean up correctly.
+  // contextBridge proxies don't preserve function identity, so we key by channel.
   ipcRenderer: {
-    _listenerMap: new Map<Function, Function>(),
+    _channelWrappers: new Map<string, (event: any, ...args: any[]) => void>(),
     on: (channel: string, callback: (...args: any[]) => void) => {
+      // Remove any existing listener for this channel first
+      const existing = electronApi.ipcRenderer._channelWrappers.get(channel);
+      if (existing) {
+        ipcRenderer.removeListener(channel, existing);
+      }
       const wrapper = (_: any, ...args: any[]) => callback(...args);
-      electronApi.ipcRenderer._listenerMap.set(callback, wrapper);
+      electronApi.ipcRenderer._channelWrappers.set(channel, wrapper);
       ipcRenderer.on(channel, wrapper);
     },
-    removeListener: (channel: string, callback: (...args: any[]) => void) => {
-      const wrapper = electronApi.ipcRenderer._listenerMap.get(callback);
+    removeListener: (channel: string, _callback: (...args: any[]) => void) => {
+      const wrapper = electronApi.ipcRenderer._channelWrappers.get(channel);
       if (wrapper) {
-        ipcRenderer.removeListener(channel, wrapper as any);
-        electronApi.ipcRenderer._listenerMap.delete(callback);
+        ipcRenderer.removeListener(channel, wrapper);
+        electronApi.ipcRenderer._channelWrappers.delete(channel);
       }
     }
   },
