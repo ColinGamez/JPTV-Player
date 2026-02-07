@@ -26,7 +26,9 @@ export function parseM3U(content: string, debug = false): ParserResult {
       };
     }
 
-    const lines = content.split(/\r?\n/).map(line => line.trim());
+    // Strip UTF-8 BOM if present
+    const cleaned = content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content;
+    const lines = cleaned.split(/\r?\n/).map(line => line.trim());
     
     if (lines.length === 0 || !lines[0].startsWith('#EXTM3U')) {
       return {
@@ -172,13 +174,13 @@ function parseAttributes(attrStr: string): Record<string, string> {
     return attributes;
   }
   
-  // Match key="value" or key='value' patterns
-  const attrRegex = /(\S+?)=["']([^"']*?)["']/g;
+  // Match key="value" or key='value' patterns (backreference ensures matching quotes)
+  const attrRegex = /(\S+?)=(["'])([^]*?)\2/g;
   let match: RegExpExecArray | null;
   
   while ((match = attrRegex.exec(attrStr)) !== null) {
     const key = match[1];
-    const value = match[2];
+    const value = match[3];
     attributes[key] = value;
   }
   

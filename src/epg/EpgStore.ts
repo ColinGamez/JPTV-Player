@@ -223,6 +223,24 @@ export class EpgStore {
     this.channelNames.clear();
   }
 
+  /**
+   * Prune expired programs (endMs < cutoffMs) from all channels.
+   * Call periodically (e.g. hourly) to prevent unbounded memory growth.
+   */
+  pruneExpired(cutoffMs: number = Date.now()): number {
+    let pruned = 0;
+    for (const [channelId, channel] of this.channelIndex) {
+      const before = channel.programs.length;
+      const filtered = channel.programs.filter(p => p.endMs >= cutoffMs);
+      if (filtered.length < before) {
+        pruned += before - filtered.length;
+        // Update with filtered set (also rebuilds sortedStarts and search index)
+        this.setChannelPrograms(channelId, filtered, this.channelNames.get(channelId));
+      }
+    }
+    return pruned;
+  }
+
   // ========== Private Helpers ==========
 
   /**

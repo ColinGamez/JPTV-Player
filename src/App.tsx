@@ -288,6 +288,7 @@ function App({ profileSession }: AppProps) {
     shortcuts: [
       {
         key: '?',
+        shift: true,
         description: 'Show keyboard shortcuts help',
         action: () => setShowShortcutsHelp(prev => !prev),
       },
