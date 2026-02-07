@@ -41,7 +41,7 @@ export const EpgSearch: React.FC<EpgSearchProps> = ({
 
     setIsSearching(true);
     const timeoutId = setTimeout(() => {
-      const searchResults = epgStore.searchPrograms(query, 50);
+      const searchResults = epgStore.searchPrograms(query, undefined, 50);
       setResults(searchResults);
       setSelectedIndex(0);
       setIsSearching(false);
@@ -73,7 +73,7 @@ export const EpgSearch: React.FC<EpgSearchProps> = ({
   };
 
   const handleSelectResult = (result: SearchResult) => {
-    onSelectResult(result.channelId, result.program.start, result.program.title);
+    onSelectResult(result.program.channelId, result.program.startMs, result.program.title);
     onClose();
   };
 
@@ -97,7 +97,7 @@ export const EpgSearch: React.FC<EpgSearchProps> = ({
   const groupedResults = React.useMemo(() => {
     const groups: { [key: string]: SearchResult[] } = {};
     results.forEach((result) => {
-      const date = new Date(result.program.start);
+      const date = new Date(result.program.startMs);
       const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       if (!groups[dateKey]) {
         groups[dateKey] = [];
@@ -166,7 +166,7 @@ export const EpgSearch: React.FC<EpgSearchProps> = ({
                       
                       return (
                         <div
-                          key={`${result.channelId}-${result.program.start}`}
+                          key={`${result.program.channelId}-${result.program.startMs}`}
                           className={`${styles.resultItem} ${isSelected ? styles.selected : ''}`}
                           onClick={() => handleSelectResult(result)}
                           onMouseEnter={() => setSelectedIndex(globalIndex)}
@@ -174,10 +174,10 @@ export const EpgSearch: React.FC<EpgSearchProps> = ({
                           <div className={styles.resultTitle}>{result.program.title}</div>
                           <div className={styles.resultMeta}>
                             <span className={styles.resultChannel}>
-                              📺 {getChannelName(result.channelId)}
+                              📺 {getChannelName(result.program.channelId)}
                             </span>
                             <span className={styles.resultTime}>
-                              🕒 {formatTime(result.program.start)}
+                              🕒 {formatTime(result.program.startMs)}
                             </span>
                           </div>
                           {result.program.description && (

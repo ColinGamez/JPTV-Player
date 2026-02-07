@@ -81,7 +81,9 @@ export const FullGuideGrid: React.FC<FullGuideGridProps> = ({
         );
 
         if (guideWindow) {
-          setGuideData(guideWindow.data);
+          const map = new Map<string, import('../types/epg').EpgProgram[]>();
+          guideWindow.channels.forEach((ch: { channelId: string; programs: import('../types/epg').EpgProgram[] }) => map.set(ch.channelId, ch.programs));
+          setGuideData(map);
         }
       } catch (err) {
         console.error('Failed to load guide data:', err);

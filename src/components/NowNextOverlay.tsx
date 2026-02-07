@@ -57,21 +57,21 @@ export const NowNextOverlay: React.FC<NowNextOverlayProps> = ({
           <span className={styles.channelId}>{channelId}</span>
         </div>
 
-        {nowNext?.currentProgram ? (
+        {nowNext?.now ? (
           <>
             <div className={styles.section}>
               <div className={styles.label}>Now Playing</div>
-              <div className={styles.programTitle}>{nowNext.currentProgram.title}</div>
+              <div className={styles.programTitle}>{nowNext.now.title}</div>
               <div className={styles.programTime}>
-                {formatTime(nowNext.currentProgram.start)} - {formatTime(nowNext.currentProgram.stop)}
+                {formatTime(nowNext.now.start)} - {formatTime(nowNext.now.stop)}
                 <span className={styles.duration}>
-                  ({formatDuration(nowNext.currentProgram.start, nowNext.currentProgram.stop)})
+                  ({formatDuration(nowNext.now.start, nowNext.now.stop)})
                 </span>
               </div>
               
-              {nowNext.currentProgram.description && (
+              {nowNext.now.description && (
                 <div className={styles.description}>
-                  {nowNext.currentProgram.description}
+                  {nowNext.now.description}
                 </div>
               )}
 
@@ -87,20 +87,20 @@ export const NowNextOverlay: React.FC<NowNextOverlayProps> = ({
               </div>
             </div>
 
-            {nowNext.nextProgram && (
+            {nowNext.next && (
               <div className={styles.section}>
                 <div className={styles.label}>Up Next</div>
-                <div className={styles.programTitle}>{nowNext.nextProgram.title}</div>
+                <div className={styles.programTitle}>{nowNext.next.title}</div>
                 <div className={styles.programTime}>
-                  {formatTime(nowNext.nextProgram.start)} - {formatTime(nowNext.nextProgram.stop)}
+                  {formatTime(nowNext.next.start)} - {formatTime(nowNext.next.stop)}
                   <span className={styles.duration}>
-                    ({formatDuration(nowNext.nextProgram.start, nowNext.nextProgram.stop)})
+                    ({formatDuration(nowNext.next.start, nowNext.next.stop)})
                   </span>
                 </div>
                 
-                {nowNext.nextProgram.description && (
+                {nowNext.next.description && (
                   <div className={styles.description}>
-                    {nowNext.nextProgram.description}
+                    {nowNext.next.description}
                   </div>
                 )}
               </div>

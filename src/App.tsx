@@ -637,6 +637,140 @@ function App({ profileSession }: AppProps) {
   // NOTE: Channel restore is handled by the "TV Mode: Auto-play last channel" effect above.
   // That effect uses activeChannels (category-filtered) which is the correct source.
 
+  const handleCategoryNavigation = useCallback((key: string) => {
+    // Throttle navigation to prevent hold-down spam
+    const now = Date.now();
+    if (now - lastNavigationTime.current < navigationThrottle) {
+      return;
+    }
+    lastNavigationTime.current = now;
+
+    if (key === 'ArrowUp') {
+      setCategoryIndex(prev => Math.max(0, prev - 1));
+    } else if (key === 'ArrowDown') {
+      setCategoryIndex(prev => Math.min(activeCategories.length - 1, prev + 1));
+    } else if (key === 'Enter') {
+      const categoryName = activeCategories[categoryIndex].name;
+      checkParentalLock('category', categoryName, () => {
+        setSelectedCategory(categoryName);
+        setChannelIndex(0);
+        setFocusArea('channels');
+      });
+    } else if (key === 'ArrowRight') {
+      setFocusArea('channels');
+    }
+  }, [categoryIndex, activeCategories, checkParentalLock]);
+
+  const handleChannelNavigation = useCallback((key: string) => {
+    // Throttle navigation to prevent hold-down spam
+    const now = Date.now();
+    if (now - lastNavigationTime.current < navigationThrottle) {
+      return;
+    }
+    lastNavigationTime.current = now;
+
+    if (key === 'ArrowUp') {
+      setChannelIndex(prev => Math.max(0, prev - 1));
+    } else if (key === 'ArrowDown') {
+      setChannelIndex(prev => Math.min(filteredChannels.length - 1, prev + 1));
+    } else if (key === 'ArrowLeft') {
+      setFocusArea('categories');
+    } else if (key === 'Enter') {
+      const channel = filteredChannels[channelIndex];
+      const channelId = String(channel.id);
+      
+      checkParentalLock('channel', channelId, () => {
+        setSelectedChannel(channel);
+        
+        // Save to history and last channel + category
+        saveLastChannel(channel, channelIndex, updateSetting);
+        addToHistory(channelId);
+      
+        // Persist last category
+        updateSetting('lastCategory', selectedCategory).catch(err => {
+          console.error('[App] Failed to save last category:', err);
+        });
+        
+        // Play channel with fallback support and error handling
+        clearError();
+        updateState('buffering', channel.name);
+        
+        playChannelWithFallback(channel)
+          .then((result) => {
+            // Guard against stale completion from rapid channel switches
+            const currentChannel = selectedChannelRef.current;
+            if (currentChannel && String(currentChannel.id) !== channelId) {
+              return; // Channel changed while we were starting playback
+            }
+            
+            if (result.success) {
+              // Track in recent channels
+              recentChannels.addRecentChannel(channel);
+              
+              // Switch audio normalization to new channel
+              audioNormalization.switchChannel(channelId).catch(err => {
+                console.warn('[AudioNormalization] Failed to switch channel:', err);
+              });
+              
+              setFocusArea('player');
+              showInfoTemporarily(3000);
+              
+              // Show success notification
+              toastNotifications.success(`Now playing: ${channel.name}`);
+            } else {
+              console.error('[App] Playback failed:', result.error);
+              updateState('error', channel.name, result.error || 'All URLs failed');
+              clearErrorAfterDelay();
+              toastNotifications.error('Playback failed');
+            }
+          })
+          .catch((error) => {
+            console.error('[App] Playback error:', error);
+            updateState('error', channel.name, error.message || 'Failed to play stream');
+            // Show error for 5 seconds
+            clearErrorAfterDelay();
+          });
+      });
+    }
+  }, [channelIndex, filteredChannels, selectedCategory, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock, recentChannels, audioNormalization, toastNotifications, showInfoTemporarily, clearErrorAfterDelay]);
+
+  const handlePlayerNavigation = useCallback((key: string) => {
+    if (key === 'r' || key === 'R') {
+      // Toggle recording (dev mode only)
+      if (import.meta.env.DEV && selectedChannel) {
+        const channelId = String(selectedChannel.id);
+        if (isRecording) {
+          stopRecording(channelId);
+        } else {
+          startRecording(channelId, selectedChannel.name);
+        }
+      }
+    } else if (key === 'a' || key === 'A') {
+      // Toggle audio-only mode
+      toggleAudioOnly();
+    } else if (key === 'ArrowUp') {
+      playerAdapter.getVolume().then(vol => {
+        const newVol = Math.min(100, vol + 5);
+        playerAdapter.setVolume(newVol);
+        setVolume(newVol); // Sync hook state so VolumeSlider shows correct value
+        updateSetting('volume', newVol);
+      });
+    } else if (key === 'ArrowDown') {
+      playerAdapter.getVolume().then(vol => {
+        const newVol = Math.max(0, vol - 5);
+        playerAdapter.setVolume(newVol);
+        setVolume(newVol); // Sync hook state so VolumeSlider shows correct value
+        updateSetting('volume', newVol);
+      });
+    } else if (key === ' ') {
+      if (playerAdapter.isPlaying()) {
+        playerAdapter.pause();
+      } else {
+        playerAdapter.resume();
+      }
+    }
+  }, [updateSetting, selectedChannel, isRecording, startRecording, stopRecording, toggleAudioOnly, setVolume]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // TV Mode: Show UI on any key press
@@ -799,140 +933,6 @@ function App({ profileSession }: AppProps) {
       handleNumericKeyPress, handleCategoryNavigation, handleChannelNavigation, handlePlayerNavigation,
       refreshNowNext, toggleFavorite, openPlaylist, loadXmltvFile]);
 
-  const handleCategoryNavigation = useCallback((key: string) => {
-    // Throttle navigation to prevent hold-down spam
-    const now = Date.now();
-    if (now - lastNavigationTime.current < navigationThrottle) {
-      return;
-    }
-    lastNavigationTime.current = now;
-
-    if (key === 'ArrowUp') {
-      setCategoryIndex(prev => Math.max(0, prev - 1));
-    } else if (key === 'ArrowDown') {
-      setCategoryIndex(prev => Math.min(activeCategories.length - 1, prev + 1));
-    } else if (key === 'Enter') {
-      const categoryName = activeCategories[categoryIndex].name;
-      checkParentalLock('category', categoryName, () => {
-        setSelectedCategory(categoryName);
-        setChannelIndex(0);
-        setFocusArea('channels');
-      });
-    } else if (key === 'ArrowRight') {
-      setFocusArea('channels');
-    }
-  }, [categoryIndex, activeCategories, checkParentalLock]);
-
-  const handleChannelNavigation = useCallback((key: string) => {
-    // Throttle navigation to prevent hold-down spam
-    const now = Date.now();
-    if (now - lastNavigationTime.current < navigationThrottle) {
-      return;
-    }
-    lastNavigationTime.current = now;
-
-    if (key === 'ArrowUp') {
-      setChannelIndex(prev => Math.max(0, prev - 1));
-    } else if (key === 'ArrowDown') {
-      setChannelIndex(prev => Math.min(filteredChannels.length - 1, prev + 1));
-    } else if (key === 'ArrowLeft') {
-      setFocusArea('categories');
-    } else if (key === 'Enter') {
-      const channel = filteredChannels[channelIndex];
-      const channelId = String(channel.id);
-      
-      checkParentalLock('channel', channelId, () => {
-        setSelectedChannel(channel);
-        
-        // Save to history and last channel + category
-        saveLastChannel(channel, channelIndex, updateSetting);
-        addToHistory(channelId);
-      
-        // Persist last category
-        updateSetting('lastCategory', selectedCategory).catch(err => {
-          console.error('[App] Failed to save last category:', err);
-        });
-        
-        // Play channel with fallback support and error handling
-        clearError();
-        updateState('buffering', channel.name);
-        
-        playChannelWithFallback(channel)
-          .then((result) => {
-            // Guard against stale completion from rapid channel switches
-            const currentChannel = selectedChannelRef.current;
-            if (currentChannel && String(currentChannel.id) !== channelId) {
-              return; // Channel changed while we were starting playback
-            }
-            
-            if (result.success) {
-              // Track in recent channels
-              recentChannels.addRecentChannel(channel);
-              
-              // Switch audio normalization to new channel
-              audioNormalization.switchChannel(channelId).catch(err => {
-                console.warn('[AudioNormalization] Failed to switch channel:', err);
-              });
-              
-              setFocusArea('player');
-              showInfoTemporarily(3000);
-              
-              // Show success notification
-              toastNotifications.success(`Now playing: ${channel.name}`);
-            } else {
-              console.error('[App] Playback failed:', result.error);
-              updateState('error', channel.name, result.error || 'All URLs failed');
-              clearErrorAfterDelay();
-              toastNotifications.error('Playback failed');
-            }
-          })
-          .catch((error) => {
-            console.error('[App] Playback error:', error);
-            updateState('error', channel.name, error.message || 'Failed to play stream');
-            // Show error for 5 seconds
-            clearErrorAfterDelay();
-          });
-      });
-    }
-  }, [channelIndex, filteredChannels, selectedCategory, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock, recentChannels, audioNormalization, toastNotifications, showInfoTemporarily, clearErrorAfterDelay]);
-
-  const handlePlayerNavigation = useCallback((key: string) => {
-    if (key === 'r' || key === 'R') {
-      // Toggle recording (dev mode only)
-      if (import.meta.env.DEV && selectedChannel) {
-        const channelId = String(selectedChannel.id);
-        if (isRecording) {
-          stopRecording(channelId);
-        } else {
-          startRecording(channelId, selectedChannel.name);
-        }
-      }
-    } else if (key === 'a' || key === 'A') {
-      // Toggle audio-only mode
-      toggleAudioOnly();
-    } else if (key === 'ArrowUp') {
-      playerAdapter.getVolume().then(vol => {
-        const newVol = Math.min(100, vol + 5);
-        playerAdapter.setVolume(newVol);
-        setVolumeLevel(newVol); // Sync hook state so VolumeSlider shows correct value
-        updateSetting('volume', newVol);
-      });
-    } else if (key === 'ArrowDown') {
-      playerAdapter.getVolume().then(vol => {
-        const newVol = Math.max(0, vol - 5);
-        playerAdapter.setVolume(newVol);
-        setVolumeLevel(newVol); // Sync hook state so VolumeSlider shows correct value
-        updateSetting('volume', newVol);
-      });
-    } else if (key === ' ') {
-      if (playerAdapter.isPlaying()) {
-        playerAdapter.pause();
-      } else {
-        playerAdapter.resume();
-      }
-    }
-  }, [updateSetting, selectedChannel, isRecording, startRecording, stopRecording, toggleAudioOnly, setVolumeLevel]);
-
   // Pre-compute EPG now/next data for selected channel to avoid repeated Map lookups in JSX
   const selectedChannelEpgId = selectedChannel ? String(selectedChannel.id) : '';
   const selectedChannelNowNext = selectedChannel ? nowNext.get(selectedChannelEpgId) : undefined;
@@ -941,8 +941,8 @@ function App({ profileSession }: AppProps) {
     if (!selectedChannelNowNext?.now) return null;
     return {
       title: selectedChannelNowNext.now.title,
-      startTime: selectedChannelNowNext.now.start,
-      endTime: selectedChannelNowNext.now.end,
+      startTime: new Date(selectedChannelNowNext.now.start),
+      endTime: new Date(selectedChannelNowNext.now.stop),
       description: selectedChannelNowNext.now.description,
     };
   }, [selectedChannelNowNext]);
@@ -951,8 +951,8 @@ function App({ profileSession }: AppProps) {
     if (!selectedChannelNowNext?.next) return null;
     return {
       title: selectedChannelNowNext.next.title,
-      startTime: selectedChannelNowNext.next.start,
-      endTime: selectedChannelNowNext.next.end,
+      startTime: new Date(selectedChannelNowNext.next.start),
+      endTime: new Date(selectedChannelNowNext.next.stop),
     };
   }, [selectedChannelNowNext]);
 
