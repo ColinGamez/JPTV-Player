@@ -72,7 +72,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
       <div className="status-items">
         {/* Connection Status */}
         <div className={`status-item status-connection status-${getConnectionColor()}`}>
-          <span className="status-dot"></span>
+          <span className="status-dot" aria-hidden="true"></span>
           <span className="status-text">{getConnectionText()}</span>
         </div>
 

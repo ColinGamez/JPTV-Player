@@ -120,7 +120,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
           <button className="grid-close-btn" onClick={onClose} aria-label="Close channel grid">✕</button>
         </div>
 
-        <div className="grid-container" ref={gridRef}>
+        <div className="grid-container" ref={gridRef} role="listbox" aria-label="Channel grid">
           {filteredChannels.map((channel, index) => {
             const channelId = String(channel.id);
             const isFavorite = favorites.includes(channelId);
@@ -128,6 +128,8 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
             return (
               <div
                 key={channel.id}
+                role="option"
+                aria-selected={index === selectedIndex}
                 className={`grid-item ${index === selectedIndex ? 'selected' : ''}`}
                 onClick={() => {
                   onSelectChannel(channel);

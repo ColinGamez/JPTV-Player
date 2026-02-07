@@ -72,7 +72,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       try {
         await callback(newSession, oldSession);
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Profile change callback failed';
         console.error('[ProfileContext] Profile change callback error:', err);
+        setError(errorMessage);
       }
     }
   }, []);

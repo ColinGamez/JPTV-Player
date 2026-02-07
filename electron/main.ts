@@ -750,9 +750,22 @@ const VALID_SETTINGS_KEYS: ReadonlySet<keyof AppSettings> = new Set([
   'channelHistory', 'favorites', 'volume'
 ]);
 
-ipcMain.handle('settings:set', (_event, key: keyof AppSettings, value: any) => {
+ipcMain.handle('settings:set', (_event, key: keyof AppSettings, value: unknown) => {
   if (!VALID_SETTINGS_KEYS.has(key)) {
     logger?.warn('Rejected invalid settings key', { key });
+    return false;
+  }
+  // Runtime type guard per key
+  const validators: Record<keyof AppSettings, (v: unknown) => boolean> = {
+    lastPlaylist: (v) => typeof v === 'string',
+    lastChannelId: (v) => typeof v === 'string',
+    lastChannelIndex: (v) => typeof v === 'number' && isFinite(v as number),
+    channelHistory: (v) => Array.isArray(v) && v.every(i => typeof i === 'string'),
+    favorites: (v) => Array.isArray(v) && v.every(i => typeof i === 'string'),
+    volume: (v) => typeof v === 'number' && isFinite(v as number),
+  };
+  if (!validators[key]?.(value)) {
+    logger?.warn('Rejected invalid settings value', { key });
     return false;
   }
   const settings = loadSettings();

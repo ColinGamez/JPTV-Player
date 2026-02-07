@@ -116,7 +116,7 @@ export const SleepTimerBadge: React.FC<{
   if (!isActive) return null;
 
   return (
-    <button className="sleep-timer-badge" onClick={onClick} title="Sleep timer active">
+    <button className="sleep-timer-badge" onClick={onClick} aria-label={`Sleep timer: ${remainingFormatted} remaining`}>
       <span className="badge-icon">🌙</span>
       <span className="badge-time">{remainingFormatted}</span>
     </button>

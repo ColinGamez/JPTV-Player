@@ -39,6 +39,8 @@ export const VolumeSlider: React.FC<VolumeSliderProps> = ({
             value={volume}
             onChange={(e) => onVolumeChange(parseInt(e.target.value, 10))}
             className="volume-input"
+            aria-label="Volume"
+            aria-valuetext={isMuted ? 'Muted' : `${Math.round(volume)}%`}
           />
         </div>
         <div className="volume-label">

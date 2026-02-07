@@ -79,7 +79,7 @@ export async function saveLastChannel(
 /**
  * Find channel by ID in channel list
  */
-export function findChannelById(channels: any[], channelId: string): { channel: any; index: number } | null {
+export function findChannelById(channels: Channel[], channelId: string): { channel: Channel; index: number } | null {
   for (let i = 0; i < channels.length; i++) {
     const ch = channels[i];
     const id = String(ch.id);
@@ -93,7 +93,7 @@ export function findChannelById(channels: any[], channelId: string): { channel: 
 /**
  * Find channel by index (1-based for user input)
  */
-export function findChannelByNumber(channels: any[], number: number): { channel: any; index: number } | null {
+export function findChannelByNumber(channels: Channel[], number: number): { channel: Channel; index: number } | null {
   const index = number - 1; // Convert to 0-based
   if (index >= 0 && index < channels.length) {
     return { channel: channels[index], index };

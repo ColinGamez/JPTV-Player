@@ -102,15 +102,17 @@ export function useRecording(channelId?: string): UseRecordingResult {
     loadRecordingsPath();
   }, [checkRecordingStatus, refreshActiveRecordings, loadRecordingsPath]);
 
-  // Poll recording status every 5 seconds
+  // Poll recording status every 5 seconds (only when recording is active)
   useEffect(() => {
+    if (!isRecording && activeRecordings.length === 0) return;
+
     const interval = setInterval(() => {
       checkRecordingStatus();
       refreshActiveRecordings();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [checkRecordingStatus, refreshActiveRecordings]);
+  }, [isRecording, activeRecordings.length, checkRecordingStatus, refreshActiveRecordings]);
 
   return {
     isRecording,
