@@ -125,7 +125,8 @@ export class ProfileManager {
     };
     this.saveProfileData(profile.id, initialData);
 
-    console.log(`[ProfileManager] Created profile: ${profile.name} (${profile.id})`);
+    console.log(`[ProfileManager] Created profile: ${profile.name}`);
+    this.logger?.info('[ProfileManager] Created profile', { id: profile.id, name: profile.name });
     return profile;
   }
 
@@ -236,7 +237,7 @@ export class ProfileManager {
     if (this.activeSession) {
       // Save current data before logout
       this.saveProfileData(this.activeSession.profile.id, this.activeSession.data);
-      console.log(`[ProfileManager] Logged out: ${this.activeSession.profile.name}`);
+      this.logger?.info('[ProfileManager] Logged out', { name: this.activeSession.profile.name });
       this.activeSession = null;
     }
   }
@@ -308,7 +309,7 @@ export class ProfileManager {
 
     try {
       const isValid = this.comparePin(pin, profile.pinHash);
-      console.log(`[ProfileManager] PIN verification for ${profile.name}: ${isValid ? 'success' : 'failed'}`);
+      this.logger?.info('[ProfileManager] PIN verification', { profileId, result: isValid ? 'success' : 'failed' });
       return isValid;
     } catch (error) {
       this.logger?.error('PIN verification error', { profileId, error });
@@ -363,7 +364,15 @@ export class ProfileManager {
   private loadIndex(): ProfilesIndex {
     try {
       const content = fs.readFileSync(this.indexPath, 'utf-8');
-      return JSON.parse(content);
+      const index: ProfilesIndex = JSON.parse(content);
+      // Validate index version compatibility
+      if (index.version && index.version !== PROFILES_INDEX_VERSION) {
+        this.logger?.warn('[ProfileManager] Index version mismatch', {
+          expected: PROFILES_INDEX_VERSION,
+          found: index.version
+        });
+      }
+      return index;
     } catch (error) {
       console.error('[ProfileManager] Failed to load index:', error);
       // Return empty index on error

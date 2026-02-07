@@ -104,9 +104,10 @@ export function useChannelSort(context: SortContext = {}) {
 
       case 'recently-watched': {
         const recentIds = ctx.recentChannelIds || [];
+        const recentMap = new Map(recentIds.map((id, i) => [id, i]));
         return sorted.sort((a, b) => {
-          const aIdx = recentIds.indexOf(getChannelSortKey(a));
-          const bIdx = recentIds.indexOf(getChannelSortKey(b));
+          const aIdx = recentMap.get(getChannelSortKey(a)) ?? -1;
+          const bIdx = recentMap.get(getChannelSortKey(b)) ?? -1;
           if (aIdx === -1 && bIdx === -1) return 0;
           if (aIdx === -1) return 1;
           if (bIdx === -1) return -1;
@@ -125,9 +126,10 @@ export function useChannelSort(context: SortContext = {}) {
 
       case 'favorites-first': {
         const favIds = ctx.favoriteIds || [];
+        const favSet = new Set(favIds);
         return sorted.sort((a, b) => {
-          const aFav = favIds.includes(getChannelSortKey(a)) ? 0 : 1;
-          const bFav = favIds.includes(getChannelSortKey(b)) ? 0 : 1;
+          const aFav = favSet.has(getChannelSortKey(a)) ? 0 : 1;
+          const bFav = favSet.has(getChannelSortKey(b)) ? 0 : 1;
           return aFav - bFav;
         });
       }

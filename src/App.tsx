@@ -565,7 +565,7 @@ function App({ profileSession }: AppProps) {
     };
 
     // Listen for IPC events from menu and player
-    const ipcRenderer = (window as any).electron?.ipcRenderer;
+    const ipcRenderer = window.electron?.ipcRenderer;
     if (ipcRenderer) {
       ipcRenderer.on('menu:openDonation', handleMenuOpenDonation);
       ipcRenderer.on('menu:openPlaylist', handleMenuOpenPlaylist);

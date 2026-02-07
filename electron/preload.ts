@@ -30,11 +30,17 @@ const electronApi = {
   },
 
   // IPC event listeners (for menu events)
+  // Only whitelisted channels are allowed — prevents renderer from snooping on internal IPC.
   // Track wrappers by channel name so removeListener can clean up correctly.
   // contextBridge proxies don't preserve function identity, so we key by channel.
   ipcRenderer: {
+    _validChannels: new Set(['menu:openDonation', 'menu:openPlaylist', 'player:error']),
     _channelWrappers: new Map<string, (event: any, ...args: any[]) => void>(),
     on: (channel: string, callback: (...args: any[]) => void) => {
+      if (!electronApi.ipcRenderer._validChannels.has(channel)) {
+        console.warn(`[Preload] Blocked ipcRenderer.on for unwhitelisted channel: ${channel}`);
+        return;
+      }
       // Remove any existing listener for this channel first
       const existing = electronApi.ipcRenderer._channelWrappers.get(channel);
       if (existing) {
@@ -45,6 +51,7 @@ const electronApi = {
       ipcRenderer.on(channel, wrapper);
     },
     removeListener: (channel: string, _callback: (...args: any[]) => void) => {
+      if (!electronApi.ipcRenderer._validChannels.has(channel)) return;
       const wrapper = electronApi.ipcRenderer._channelWrappers.get(channel);
       if (wrapper) {
         ipcRenderer.removeListener(channel, wrapper);
