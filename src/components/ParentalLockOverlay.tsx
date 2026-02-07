@@ -10,6 +10,7 @@ interface ParentalLockOverlayProps {
 const MAX_FAILED_ATTEMPTS = 5;
 const BASE_LOCKOUT_MS = 30_000; // 30 seconds
 const MAX_LOCKOUT_MS = 300_000; // 5 minutes
+const ERROR_DISPLAY_MS = 500;
 
 export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
   onUnlock,
@@ -22,6 +23,14 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const isVerifyingRef = useRef(false);
+  const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup error timer on unmount
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    };
+  }, []);
 
   // Clear lockout when timer expires
   useEffect(() => {
@@ -57,7 +66,8 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
         return next;
       });
       // Shake animation will be triggered by error class
-      setTimeout(() => setError(false), 500);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setError(false), ERROR_DISPLAY_MS);
     } else {
       setFailedAttempts(0);
       setLockedUntil(null);

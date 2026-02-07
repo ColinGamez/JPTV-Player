@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from './CreateProfile.module.css';
 
 interface CreateProfileProps {
@@ -25,6 +25,7 @@ export const CreateProfile: React.FC<CreateProfileProps> = ({
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [pin, setPin] = useState('');
   const [usePin, setUsePin] = useState(false);
+  const submitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keyboard navigation
   useEffect(() => {
@@ -78,7 +79,7 @@ export const CreateProfile: React.FC<CreateProfileProps> = ({
             
             // Auto-submit only when reaching max PIN length (6)
             if (newPin.length === 6) {
-              setTimeout(() => {
+              submitTimerRef.current = setTimeout(() => {
                 onSubmit(name, newPin, AVATAR_OPTIONS[selectedAvatar]);
               }, 200);
             }
@@ -92,7 +93,10 @@ export const CreateProfile: React.FC<CreateProfileProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+    };
   }, [step, name, selectedAvatar, pin, usePin, onSubmit, onCancel]);
 
   return (

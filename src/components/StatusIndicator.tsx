@@ -18,7 +18,7 @@ export interface StatusIndicatorProps {
   viewerCount?: number;
 }
 
-export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
+export const StatusIndicator: React.FC<StatusIndicatorProps> = React.memo(({
   connectionStatus,
   streamHealth,
   isRecording = false,
@@ -27,11 +27,11 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
 }) => {
   const getConnectionColor = () => {
     switch (connectionStatus) {
-      case 'connected': return 'green';
-      case 'connecting': return 'yellow';
-      case 'disconnected': return 'gray';
-      case 'error': return 'red';
-      default: return 'gray';
+      case 'connected': return 'connected';
+      case 'connecting': return 'connecting';
+      case 'disconnected': return 'disconnected';
+      case 'error': return 'error';
+      default: return 'disconnected';
     }
   };
 
@@ -125,4 +125,4 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
       </div>
     </div>
   );
-};
+});

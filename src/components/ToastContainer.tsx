@@ -3,7 +3,7 @@
  * Displays toast notifications
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type { Toast } from '../hooks/useToast';
 import './ToastContainer.css';
 
@@ -29,10 +29,18 @@ interface ToastItemProps {
 
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const [isLeaving, setIsLeaving] = useState(false);
+  const dismissTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup dismiss timer on unmount
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    };
+  }, []);
 
   const handleDismiss = () => {
     setIsLeaving(true);
-    setTimeout(() => {
+    dismissTimerRef.current = setTimeout(() => {
       onDismiss(toast.id);
     }, 300); // Match animation duration
   };
