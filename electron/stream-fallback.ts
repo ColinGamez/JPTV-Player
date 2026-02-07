@@ -16,6 +16,8 @@ export interface FallbackState {
   retryCount: number;
 }
 
+const MAX_TRACKED_CHANNELS = 200; // Evict oldest entries beyond this
+
 export class StreamFallbackManager {
   private fallbackStates: Map<string, FallbackState> = new Map();
   private logger: RotatingLogger | null = null;
@@ -32,6 +34,14 @@ export class StreamFallbackManager {
     if (urls.length === 0) {
       this.logger?.warn('No URLs provided for channel', { channelId });
       return;
+    }
+
+    // Evict oldest tracked channel if map is at capacity
+    if (!this.fallbackStates.has(channelId) && this.fallbackStates.size >= MAX_TRACKED_CHANNELS) {
+      const firstKey = this.fallbackStates.keys().next().value;
+      if (firstKey !== undefined && firstKey !== channelId) {
+        this.fallbackStates.delete(firstKey);
+      }
     }
 
     // Find starting index

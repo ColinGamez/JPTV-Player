@@ -96,6 +96,8 @@ function App({ profileSession }: AppProps) {
   const lastNavigationTime = useRef<number>(0);
   const navigationThrottle = 100; // ms between navigation events
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const showInfoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { settings, updateSetting, toggleFavorite, updateProfileData, isElectron } = useProfileSettings(profileSession);
   const { openPlaylist, playlistPath, channels, categories, parseError } = usePlaylist({ 
@@ -103,6 +105,27 @@ function App({ profileSession }: AppProps) {
     updateProfileData 
   });
   const { playbackInfo, updateState, clearError } = usePlaybackState();
+
+  // Managed timers: prevent pile-up from rapid channel switches
+  const showInfoTemporarily = useCallback((durationMs: number) => {
+    if (showInfoTimerRef.current) clearTimeout(showInfoTimerRef.current);
+    setShowInfo(true);
+    showInfoTimerRef.current = setTimeout(() => setShowInfo(false), durationMs);
+  }, []);
+
+  const clearErrorAfterDelay = useCallback((durationMs: number = 5000) => {
+    if (clearErrorTimerRef.current) clearTimeout(clearErrorTimerRef.current);
+    clearErrorTimerRef.current = setTimeout(() => clearError(), durationMs);
+  }, [clearError]);
+
+  // Cleanup managed timers on unmount
+  useEffect(() => {
+    return () => {
+      if (showInfoTimerRef.current) clearTimeout(showInfoTimerRef.current);
+      if (clearErrorTimerRef.current) clearTimeout(clearErrorTimerRef.current);
+    };
+  }, []);
+
   const { addToHistory, getPreviousChannel } = useChannelHistory(settings, updateSetting);
   const { nowNext, channels: epgChannels, stats, loading: epgLoading, loadXmltvFile, refreshNowNext } = useEpgData();
   const { playChannelWithFallback } = useChannelFallback();
@@ -397,35 +420,33 @@ function App({ profileSession }: AppProps) {
         saveLastChannel(result.channel, result.index, updateSetting);
         addToHistory(channelId);
       
-      // Play channel with fallback support
-      clearError();
-      updateState('buffering', result.channel.name);
-      
-      const playResult = await playChannelWithFallback(result.channel);
-      
-      // Guard against stale completion from rapid channel switches
-      const currentChannel = selectedChannelRef.current;
-      if (currentChannel && String(currentChannel.id) !== channelId) {
-        return; // Channel changed during playback start
-      }
-      
-      if (playResult.success) {
-        // Switch audio normalization to new channel
-        const channelId = String(result.channel.id);
-        audioNormalization.switchChannel(channelId).catch(err => {
-          console.warn('[AudioNormalization] Failed to switch channel:', err);
-        });
+        // Play channel with fallback support
+        clearError();
+        updateState('buffering', result.channel.name);
         
-        setFocusArea('player');
-        setShowInfo(true);
-        setTimeout(() => setShowInfo(false), 3000);
-      } else {
-        updateState('error', result.channel.name, playResult.error || 'All URLs failed');
-        setTimeout(() => clearError(), 5000);
-      }
+        const playResult = await playChannelWithFallback(result.channel);
+        
+        // Guard against stale completion from rapid channel switches
+        const currentChannel = selectedChannelRef.current;
+        if (currentChannel && String(currentChannel.id) !== channelId) {
+          return; // Channel changed during playback start
+        }
+        
+        if (playResult.success) {
+          // Switch audio normalization to new channel
+          audioNormalization.switchChannel(channelId).catch(err => {
+            console.warn('[AudioNormalization] Failed to switch channel:', err);
+          });
+          
+          setFocusArea('player');
+          showInfoTemporarily(3000);
+        } else {
+          updateState('error', result.channel.name, playResult.error || 'All URLs failed');
+          clearErrorAfterDelay();
+        }
       });
     }
-  }, [filteredChannels, updateSetting, addToHistory, playChannelWithFallback, updateState, clearError, checkParentalLock]);
+  }, [filteredChannels, updateSetting, addToHistory, playChannelWithFallback, updateState, clearError, checkParentalLock, showInfoTemporarily, clearErrorAfterDelay]);
 
   const { inputBuffer, isInputMode, handleKeyPress: handleNumericKeyPress } = useNumericInput(handleNumericChannelSelect);
 
@@ -453,11 +474,10 @@ function App({ profileSession }: AppProps) {
             });
             
             setFocusArea('player');
-            setShowInfo(true);
-            setTimeout(() => setShowInfo(false), 5000);
+            showInfoTemporarily(5000);
           } else {
             updateState('error', result.channel.name, playResult.error || 'All URLs failed');
-            setTimeout(() => clearError(), 5000);
+            clearErrorAfterDelay();
           }
         };
         
@@ -482,16 +502,13 @@ function App({ profileSession }: AppProps) {
               });
               
               setFocusArea('player');
-              setShowInfo(true);
-              setTimeout(() => {
-                setShowInfo(false);
-              }, 5000);
+              showInfoTemporarily(5000);
               
               // Save new last channel
               saveLastChannel(firstChannel, 0, updateSetting);
             } else {
               updateState('error', firstChannel.name, playResult.error || 'Playback failed');
-              setTimeout(() => clearError(), 5000);
+              clearErrorAfterDelay();
             }
           };
           
@@ -841,55 +858,53 @@ function App({ profileSession }: AppProps) {
         saveLastChannel(channel, channelIndex, updateSetting);
         addToHistory(channelId);
       
-      // Persist last category
-      updateSetting('lastCategory', selectedCategory).catch(err => {
-        console.error('[App] Failed to save last category:', err);
-      });
-      
-      // Play channel with fallback support and error handling
-      clearError();
-      updateState('buffering', channel.name);
-      
-      playChannelWithFallback(channel)
-        .then((result) => {
-          // Guard against stale completion from rapid channel switches
-          const currentChannel = selectedChannelRef.current;
-          if (currentChannel && String(currentChannel.id) !== channelId) {
-            return; // Channel changed while we were starting playback
-          }
-          
-          if (result.success) {
-            // Track in recent channels
-            recentChannels.addRecentChannel(channel);
-            
-            // Switch audio normalization to new channel
-            const channelId = String(channel.id);
-            audioNormalization.switchChannel(channelId).catch(err => {
-              console.warn('[AudioNormalization] Failed to switch channel:', err);
-            });
-            
-            setFocusArea('player');
-            setShowInfo(true);
-            setTimeout(() => setShowInfo(false), 3000);
-            
-            // Show success notification
-            toastNotifications.success(`Now playing: ${channel.name}`);
-          } else {
-            console.error('[App] Playback failed:', result.error);
-            updateState('error', channel.name, result.error || 'All URLs failed');
-            setTimeout(() => clearError(), 5000);
-            toastNotifications.error('Playback failed');
-          }
-        })
-        .catch((error) => {
-          console.error('[App] Playback error:', error);
-          updateState('error', channel.name, error.message || 'Failed to play stream');
-          // Show error for 5 seconds
-          setTimeout(() => clearError(), 5000);
+        // Persist last category
+        updateSetting('lastCategory', selectedCategory).catch(err => {
+          console.error('[App] Failed to save last category:', err);
         });
+        
+        // Play channel with fallback support and error handling
+        clearError();
+        updateState('buffering', channel.name);
+        
+        playChannelWithFallback(channel)
+          .then((result) => {
+            // Guard against stale completion from rapid channel switches
+            const currentChannel = selectedChannelRef.current;
+            if (currentChannel && String(currentChannel.id) !== channelId) {
+              return; // Channel changed while we were starting playback
+            }
+            
+            if (result.success) {
+              // Track in recent channels
+              recentChannels.addRecentChannel(channel);
+              
+              // Switch audio normalization to new channel
+              audioNormalization.switchChannel(channelId).catch(err => {
+                console.warn('[AudioNormalization] Failed to switch channel:', err);
+              });
+              
+              setFocusArea('player');
+              showInfoTemporarily(3000);
+              
+              // Show success notification
+              toastNotifications.success(`Now playing: ${channel.name}`);
+            } else {
+              console.error('[App] Playback failed:', result.error);
+              updateState('error', channel.name, result.error || 'All URLs failed');
+              clearErrorAfterDelay();
+              toastNotifications.error('Playback failed');
+            }
+          })
+          .catch((error) => {
+            console.error('[App] Playback error:', error);
+            updateState('error', channel.name, error.message || 'Failed to play stream');
+            // Show error for 5 seconds
+            clearErrorAfterDelay();
+          });
       });
     }
-  }, [channelIndex, filteredChannels, selectedCategory, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock, recentChannels, audioNormalization, toastNotifications]);
+  }, [channelIndex, filteredChannels, selectedCategory, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock, recentChannels, audioNormalization, toastNotifications, showInfoTemporarily, clearErrorAfterDelay]);
 
   const handlePlayerNavigation = useCallback((key: string) => {
     if (key === 'r' || key === 'R') {

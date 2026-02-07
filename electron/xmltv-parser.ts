@@ -106,6 +106,16 @@ export async function parseXmltvFile(filePath: string): Promise<XmltvParseResult
   const programs = new Map<string, EpgProgram[]>();
   
   try {
+    // Guard against files large enough to OOM the main process
+    const fileStat = await fs.promises.stat(filePath);
+    const MAX_XMLTV_SIZE = 200 * 1024 * 1024; // 200 MB
+    if (fileStat.size > MAX_XMLTV_SIZE) {
+      throw new Error(
+        `XMLTV file too large (${Math.round(fileStat.size / 1024 / 1024)}MB). ` +
+        `Maximum supported size is ${MAX_XMLTV_SIZE / 1024 / 1024}MB to prevent memory exhaustion.`
+      );
+    }
+
     // Read file
     const xmlContent = await fs.promises.readFile(filePath, 'utf-8');
     

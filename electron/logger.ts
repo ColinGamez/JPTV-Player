@@ -8,6 +8,8 @@ export class RotatingLogger {
   private currentLogFile: string;
   private writeQueue: string[] = [];
   private isWriting = false;
+  private consecutiveFailures = 0;
+  private static readonly MAX_WRITE_RETRIES = 2;
 
   constructor(logDir: string, maxLogSize = 5 * 1024 * 1024, maxLogFiles = 5) {
     this.logDir = logDir;
@@ -90,6 +92,14 @@ export class RotatingLogger {
       this.isWriting = false;
       if (err) {
         console.error('[RotatingLogger] Failed to write log:', err);
+        // Re-queue failed batch for retry (up to MAX_WRITE_RETRIES)
+        if (this.consecutiveFailures < RotatingLogger.MAX_WRITE_RETRIES) {
+          this.consecutiveFailures++;
+          this.writeQueue.unshift(data);
+        }
+        // else: drop data to prevent infinite retry loop
+      } else {
+        this.consecutiveFailures = 0;
       }
       // Drain any messages that arrived while we were writing
       if (this.writeQueue.length > 0) {
@@ -104,6 +114,7 @@ export class RotatingLogger {
   close(): void {
     if (this.writeQueue.length > 0) {
       try {
+        this.rotateIfNeeded();
         const batch = this.writeQueue.splice(0);
         fs.appendFileSync(this.currentLogFile, batch.join(''), 'utf-8');
       } catch (error) {

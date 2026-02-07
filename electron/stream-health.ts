@@ -37,6 +37,8 @@ interface RollingStats {
 const MAX_SAMPLES = 20;      // Keep last 20 samples (~ 1 minute at 3s intervals)
 const MIN_SAMPLES = 5;       // Need at least 5 samples for scoring
 
+const MAX_TRACKED_CHANNELS = 200; // Evict oldest entries beyond this
+
 export class StreamHealthScorer {
   private channelStats: Map<string, RollingStats> = new Map();
   private currentChannelId: string | null = null;
@@ -48,6 +50,13 @@ export class StreamHealthScorer {
     this.currentChannelId = channelId;
 
     if (!this.channelStats.has(channelId)) {
+      // Evict oldest tracked channel if map is at capacity
+      if (this.channelStats.size >= MAX_TRACKED_CHANNELS) {
+        const firstKey = this.channelStats.keys().next().value;
+        if (firstKey !== undefined && firstKey !== channelId) {
+          this.channelStats.delete(firstKey);
+        }
+      }
       this.channelStats.set(channelId, {
         bitrates: [],
         lostPictures: [],
@@ -74,13 +83,13 @@ export class StreamHealthScorer {
     // Always track bitrate
     rolling.bitrates.push(stats.inputBitrate);
 
-    // Keep only last N samples
-    if (rolling.bitrates.length > MAX_SAMPLES) {
-      rolling.bitrates.shift();
-      rolling.lostPictures.shift();
-      rolling.displayedPictures.shift();
-      rolling.lostBuffers.shift();
-    }
+    // Keep only last N samples (cap each array independently to avoid
+    // off-by-one: bitrates gets a push every call, but the delta arrays
+    // only start on the second call when lastStats is available)
+    if (rolling.bitrates.length > MAX_SAMPLES) rolling.bitrates.shift();
+    if (rolling.lostPictures.length > MAX_SAMPLES) rolling.lostPictures.shift();
+    if (rolling.displayedPictures.length > MAX_SAMPLES) rolling.displayedPictures.shift();
+    if (rolling.lostBuffers.length > MAX_SAMPLES) rolling.lostBuffers.shift();
 
     rolling.lastStats = stats;
   }

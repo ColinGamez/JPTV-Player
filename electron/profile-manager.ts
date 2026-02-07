@@ -210,11 +210,8 @@ export class ProfileManager {
       }
     }
 
-    // Update last login
+    // Update last login and set as last active (single atomic write)
     profile.lastLogin = Date.now();
-    this.saveIndex(index);
-
-    // Set as last active
     index.lastActiveProfileId = profile.id;
     this.saveIndex(index);
 
