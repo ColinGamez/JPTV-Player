@@ -12,7 +12,7 @@ interface ChannelGridProps {
   isVisible: boolean;
   onClose: () => void;
   onSelectChannel: (channel: Channel) => void;
-  favorites: number[];
+  favorites: string[];
 }
 
 export const ChannelGrid: React.FC<ChannelGridProps> = ({
@@ -29,7 +29,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
   // Filter channels
   const filteredChannels = filter === 'favorites' 
     ? channels.filter(ch => {
-        const channelId = typeof ch.id === 'string' ? parseInt(ch.id, 16) || 0 : ch.id;
+        const channelId = String(ch.id);
         return favorites.includes(channelId);
       })
     : channels;
@@ -119,7 +119,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
 
         <div className="grid-container" ref={gridRef}>
           {filteredChannels.map((channel, index) => {
-            const channelId = typeof channel.id === 'string' ? parseInt(channel.id, 16) || 0 : channel.id;
+            const channelId = String(channel.id);
             const isFavorite = favorites.includes(channelId);
             
             return (

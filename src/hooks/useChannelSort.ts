@@ -45,7 +45,16 @@ function getChannelSortKey(channel: Channel): string {
 
 function getChannelNumber(channel: Channel): number {
   if (typeof channel.id === 'number') return channel.id;
-  return parseInt(channel.id, 16) || 0;
+  // Try parsing as decimal number first, then fall back to hash-based ordering
+  const parsed = parseInt(channel.id, 10);
+  if (!isNaN(parsed)) return parsed;
+  // For non-numeric IDs, generate a stable number from the string
+  let hash = 0;
+  for (let i = 0; i < channel.id.length; i++) {
+    hash = ((hash << 5) - hash) + channel.id.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
 }
 
 export function useChannelSort(context: SortContext = {}) {

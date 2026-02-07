@@ -142,7 +142,7 @@ function App({ profileSession }: AppProps) {
     ? activeChannels
     : channels.length > 0
       ? (categories[selectedCategory] || [])
-      : mockChannels.filter(c => c.category === selectedCategory);
+      : mockChannels.filter(c => c.group === selectedCategory);
 
   // New features: Channel Search
   const {
@@ -216,7 +216,7 @@ function App({ profileSession }: AppProps) {
   // New features: Channel Sorting
   const channelSort = useChannelSort({
     recentChannelIds: recentChannels.recentChannels.map(ch => String(ch.id)),
-    favoriteIds: channelFavorites.favorites.map(String),
+    favoriteIds: channelFavorites.favoriteIds.map(String),
   });
 
   // New features: Screenshot Capture
@@ -849,7 +849,7 @@ function App({ profileSession }: AppProps) {
         });
       });
     }
-  }, [channelIndex, filteredChannels, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock]);
+  }, [channelIndex, filteredChannels, selectedCategory, updateSetting, updateState, clearError, addToHistory, playChannelWithFallback, checkParentalLock, recentChannels, audioNormalization, toastNotifications]);
 
   const handlePlayerNavigation = useCallback((key: string) => {
     if (key === 'r' || key === 'R') {
@@ -1001,7 +1001,7 @@ function App({ profileSession }: AppProps) {
           channels={activeChannels.map(ch => ({
             id: String(ch.id),
             name: ch.name,
-            category: 'group' in ch ? ch.group : (ch as MockChannel).category
+            category: ch.group
           }))}
         />
       )}
@@ -1156,9 +1156,7 @@ function App({ profileSession }: AppProps) {
             toastNotifications.error('Playback failed');
           }
         }}
-        favorites={channelFavorites.favorites.map(fav =>
-          typeof fav === 'string' ? parseInt(fav, 16) || 0 : fav
-        )}
+        favorites={channelFavorites.favoriteIds}
       />
 
       {/* Performance Monitor (Dev Mode) */}

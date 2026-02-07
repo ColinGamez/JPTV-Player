@@ -113,17 +113,17 @@ const ProfileApp: React.FC = () => {
   }, [lastActiveProfileId]);
 
   // Handle profile selection
-  const handleSelectProfile = async (profile: Profile) => {
-    setSelectedProfile(profile);
+  const handleSelectProfile = async (selectedProf: Profile) => {
+    setSelectedProfile(selectedProf);
     setPinError(null);
 
-    if (profile.hasPin) {
+    if (selectedProf.hasPin) {
       // Require PIN entry
       setAppState(AppState.PinEntry);
     } else {
       // Login without PIN
       try {
-        await profile.login({ profileId: profile.id });
+        await profile.login({ profileId: selectedProf.id });
         setAppState(AppState.Authenticated);
       } catch (err) {
         console.error('[ProfileApp] Login failed:', err);
