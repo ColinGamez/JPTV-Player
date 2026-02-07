@@ -1310,6 +1310,13 @@ ipcMain.handle('epg:loadXmltv', async (_event, filePath: string) => {
     return { success: false, error: 'EPG manager not initialized' };
   }
 
+  // Validate file extension
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.xml', '.xmltv'].includes(ext)) {
+    logger?.warn('Invalid EPG file extension', { filePath, ext });
+    return { success: false, error: `Invalid file type: ${ext}. Expected .xml or .xmltv` };
+  }
+
   try {
     logger?.info('Loading XMLTV file', { filePath });
     const result = await epgManager.loadFromXmltv(filePath);
@@ -1650,6 +1657,10 @@ function cleanupOrphanedVlcProcesses(): void {
 
 ipcMain.handle('shell:openExternal', async (_, url: string) => {
   try {
+    // Security: Only allow http(s) URLs
+    if (!url.startsWith('https://') && !url.startsWith('http://')) {
+      throw new Error(`Blocked opening non-HTTP URL: ${url}`);
+    }
     logger?.info('Opening external URL', { url });
     await shell.openExternal(url);
   } catch (error) {

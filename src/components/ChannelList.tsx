@@ -7,7 +7,7 @@ interface ChannelListProps {
   channels: (Channel | MockChannel)[];
   selectedIndex: number;
   focused: boolean;
-  favorites: number[];
+  favorites: string[];
 }
 
 function ChannelList({ channels, selectedIndex, focused, favorites }: ChannelListProps) {
@@ -18,14 +18,9 @@ function ChannelList({ channels, selectedIndex, focused, favorites }: ChannelLis
       <div className={styles.header}>チャンネル</div>
       <div className={styles.grid}>
         {channels.map((channel, index) => {
-          // Handle both string IDs (parsed) and number IDs (mock)
-          const channelNumId = typeof channel.id === 'string' 
-            ? parseInt(channel.id, 16) || 0 
-            : channel.id;
-          const isFavorite = favorites.includes(channelNumId);
-          const channelKey = typeof channel.id === 'string' 
-            ? channel.id 
-            : `mock-${channel.id}`;
+          const channelId = String(channel.id);
+          const isFavorite = favorites.includes(channelId);
+          const channelKey = channelId;
           
           // Get health score (dev mode only)
           const health = isDevMode ? getHealthForChannel(channel.url) : null;

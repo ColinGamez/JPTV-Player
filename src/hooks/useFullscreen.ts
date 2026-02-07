@@ -35,7 +35,7 @@ export function useFullscreen({ profileSession, updateProfileData, isElectron }:
     };
 
     syncFullscreen();
-  }, [profileSession.id, isElectron]);
+  }, [profileSession.profile.id, isElectron]);
 
   const toggleFullscreen = useCallback(async () => {
     if (!isElectron) return;

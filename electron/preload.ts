@@ -29,12 +29,20 @@ const electronApi = {
   },
 
   // IPC event listeners (for menu events)
+  // Track wrapper functions so removeListener works correctly
   ipcRenderer: {
+    _listenerMap: new Map<Function, Function>(),
     on: (channel: string, callback: (...args: any[]) => void) => {
-      ipcRenderer.on(channel, (_, ...args) => callback(...args));
+      const wrapper = (_: any, ...args: any[]) => callback(...args);
+      electronApi.ipcRenderer._listenerMap.set(callback, wrapper);
+      ipcRenderer.on(channel, wrapper);
     },
     removeListener: (channel: string, callback: (...args: any[]) => void) => {
-      ipcRenderer.removeListener(channel, callback);
+      const wrapper = electronApi.ipcRenderer._listenerMap.get(callback);
+      if (wrapper) {
+        ipcRenderer.removeListener(channel, wrapper as any);
+        electronApi.ipcRenderer._listenerMap.delete(callback);
+      }
     }
   },
   
