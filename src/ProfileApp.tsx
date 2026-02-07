@@ -94,7 +94,7 @@ const ProfileApp: React.FC = () => {
     }
 
     return () => clearTimeout(timeoutId);
-  }, [profile.profiles, profile.isLoading, autoLoginAttempted, appState, profile]);
+  }, [profile.profiles, profile.isLoading, autoLoginAttempted, appState, profile.login]);
 
   // Load last active profile on mount (kept for fallback)
   useEffect(() => {

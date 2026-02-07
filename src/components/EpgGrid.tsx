@@ -223,12 +223,14 @@ export const EpgGrid: React.FC<EpgGridProps> = ({
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setFocusedChannelIndex(prev => Math.max(0, prev - 1));
-        listRef.current?.scrollToItem(Math.max(0, focusedChannelIndex - 1));
+        const newIndex = Math.max(0, focusedChannelIndex - 1);
+        setFocusedChannelIndex(newIndex);
+        listRef.current?.scrollToItem(newIndex);
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setFocusedChannelIndex(prev => Math.min(channels.length - 1, prev + 1));
-        listRef.current?.scrollToItem(Math.min(channels.length - 1, focusedChannelIndex + 1));
+        const newIndex = Math.min(channels.length - 1, focusedChannelIndex + 1);
+        setFocusedChannelIndex(newIndex);
+        listRef.current?.scrollToItem(newIndex);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         const newTimeMs = focusedTimeMs - (timeBlockMinutes * 60 * 1000);

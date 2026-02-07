@@ -3,7 +3,7 @@
  * Grid layout for browsing channels visually
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { Channel } from '../types/channel';
 import './ChannelGrid.css';
 
@@ -26,13 +26,16 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Filter channels
-  const filteredChannels = filter === 'favorites' 
-    ? channels.filter(ch => {
-        const channelId = String(ch.id);
-        return favorites.includes(channelId);
-      })
-    : channels;
+  // Filter channels (memoized to prevent keyboard effect re-registration)
+  const filteredChannels = useMemo(() => 
+    filter === 'favorites' 
+      ? channels.filter(ch => {
+          const channelId = String(ch.id);
+          return favorites.includes(channelId);
+        })
+      : channels,
+    [channels, favorites, filter]
+  );
 
   // Reset selectedIndex when filter changes to avoid out-of-bounds
   useEffect(() => {

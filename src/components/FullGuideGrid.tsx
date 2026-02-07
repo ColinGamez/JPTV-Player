@@ -109,6 +109,7 @@ export const FullGuideGrid: React.FC<FullGuideGridProps> = ({
 
   // Get program block style
   const getProgramStyle = (program: EpgProgram): React.CSSProperties => {
+    if (timeSlots.length === 0) return { left: '0px', width: '0px' };
     const startSlot = Math.floor((program.start - timeSlots[0].start) / SLOT_DURATION);
     const duration = program.stop - program.start;
     const width = (duration / SLOT_DURATION) * SLOT_WIDTH;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './ParentalLockOverlay.module.css';
 
 interface ParentalLockOverlayProps {
@@ -6,6 +6,10 @@ interface ParentalLockOverlayProps {
   onCancel: () => void;
   title?: string;
 }
+
+const MAX_FAILED_ATTEMPTS = 5;
+const BASE_LOCKOUT_MS = 30_000; // 30 seconds
+const MAX_LOCKOUT_MS = 300_000; // 5 minutes
 
 export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
   onUnlock,
@@ -15,17 +19,24 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const isVerifyingRef = useRef(false);
 
-  // Auto-submit when PIN reaches 4-6 digits
+  // Clear lockout when timer expires
   useEffect(() => {
-    if (pin.length >= 4 && pin.length <= 6 && !isVerifying) {
-      handleSubmit();
-    }
-  }, [pin]);
+    if (!lockedUntil) return;
+    const remaining = lockedUntil - Date.now();
+    if (remaining <= 0) { setLockedUntil(null); return; }
+    const timer = setTimeout(() => setLockedUntil(null), remaining);
+    return () => clearTimeout(timer);
+  }, [lockedUntil]);
 
-  const handleSubmit = async () => {
-    if (pin.length < 4) return;
+  const handleSubmit = useCallback(async () => {
+    if (pin.length < 4 || isVerifyingRef.current) return;
+    if (lockedUntil && Date.now() < lockedUntil) return;
 
+    isVerifyingRef.current = true;
     setIsVerifying(true);
     setError(false);
 
@@ -34,22 +45,45 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
     if (!success) {
       setError(true);
       setPin('');
+      setFailedAttempts(prev => {
+        const next = prev + 1;
+        if (next >= MAX_FAILED_ATTEMPTS) {
+          const lockMs = Math.min(
+            BASE_LOCKOUT_MS * Math.pow(2, next - MAX_FAILED_ATTEMPTS),
+            MAX_LOCKOUT_MS
+          );
+          setLockedUntil(Date.now() + lockMs);
+        }
+        return next;
+      });
       // Shake animation will be triggered by error class
       setTimeout(() => setError(false), 500);
+    } else {
+      setFailedAttempts(0);
+      setLockedUntil(null);
     }
 
+    isVerifyingRef.current = false;
     setIsVerifying(false);
-  };
+  }, [pin, onUnlock, lockedUntil]);
 
-  const handleKeyPress = (key: string) => {
-    if (isVerifying) return;
+  const handleKeyPress = useCallback((key: string) => {
+    if (isVerifyingRef.current) return;
+    if (lockedUntil && Date.now() < lockedUntil) return;
 
     if (key === 'backspace') {
       setPin(prev => prev.slice(0, -1));
     } else if (key >= '0' && key <= '9' && pin.length < 6) {
       setPin(prev => prev + key);
     }
-  };
+  }, [pin.length, lockedUntil]);
+
+  // Auto-submit when PIN reaches 4-6 digits
+  useEffect(() => {
+    if (pin.length >= 4 && pin.length <= 6 && !isVerifyingRef.current) {
+      handleSubmit();
+    }
+  }, [pin, handleSubmit]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,7 +103,9 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pin, isVerifying]);
+  }, [pin.length, handleKeyPress, handleSubmit, onCancel]);
+
+  const inputDisabled = isVerifying || !!lockedUntil;
 
   return (
     <div className={styles.overlay}>
@@ -86,7 +122,10 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
           ))}
         </div>
 
-        {error && <p className={styles.error}>Incorrect PIN. Please try again.</p>}
+        {error && !lockedUntil && <p className={styles.error}>Incorrect PIN. Please try again.</p>}
+        {!!lockedUntil && (
+          <p className={styles.error}>Too many failed attempts. Please wait before trying again.</p>
+        )}
 
         <div className={styles.numpad}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
@@ -94,7 +133,7 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
               key={num}
               className={styles.numButton}
               onClick={() => handleKeyPress(num.toString())}
-              disabled={isVerifying}
+              disabled={inputDisabled}
             >
               {num}
             </button>
@@ -109,14 +148,14 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
           <button
             className={styles.numButton}
             onClick={() => handleKeyPress('0')}
-            disabled={isVerifying}
+            disabled={inputDisabled}
           >
             0
           </button>
           <button
             className={styles.numButton}
             onClick={() => handleKeyPress('backspace')}
-            disabled={isVerifying}
+            disabled={inputDisabled}
           >
             ⌫
           </button>

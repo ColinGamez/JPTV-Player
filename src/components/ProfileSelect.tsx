@@ -119,6 +119,10 @@ export const ProfileSelect: React.FC<ProfileSelectProps> = ({
           <div
             key={profile.id}
             className={`${styles.profileCard} ${selectedIndex === index ? styles.selected : ''}`}
+            onClick={() => onSelectProfile(profile)}
+            onMouseEnter={() => setSelectedIndex(index)}
+            role="button"
+            tabIndex={0}
           >
             <div className={styles.avatarContainer}>
               <div className={styles.avatar}>
@@ -138,6 +142,10 @@ export const ProfileSelect: React.FC<ProfileSelectProps> = ({
         {/* Create New Profile Option */}
         <div
           className={`${styles.profileCard} ${styles.createCard} ${selectedIndex === profiles.length ? styles.selected : ''}`}
+          onClick={() => onCreate()}
+          onMouseEnter={() => setSelectedIndex(profiles.length)}
+          role="button"
+          tabIndex={0}
         >
           <div className={styles.avatarContainer}>
             <div className={`${styles.avatar} ${styles.createAvatar}`}>
