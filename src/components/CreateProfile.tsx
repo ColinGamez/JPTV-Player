@@ -35,6 +35,7 @@ export const CreateProfile: React.FC<CreateProfileProps> = ({
         if (e.key === 'Escape') {
           onCancel();
         } else if (e.key === 'Enter' && name.trim().length > 0) {
+          e.preventDefault();
           setStep(Step.Avatar);
         } else if (e.key === 'Backspace' && name.length > 0) {
           setName(prev => prev.slice(0, -1));

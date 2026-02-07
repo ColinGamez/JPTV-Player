@@ -53,7 +53,7 @@ export const EpgDetailsPanel: React.FC<EpgDetailsPanelProps> = ({
     <div className={styles.panel}>
       <div className={styles.header}>
         <h2 className={styles.title}>{program.title}</h2>
-        <button className={styles.closeButton} onClick={onClose}>
+        <button className={styles.closeButton} onClick={onClose} aria-label="Close details panel">
           ×
         </button>
       </div>

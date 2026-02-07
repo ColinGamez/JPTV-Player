@@ -56,11 +56,13 @@ export function useMultiView() {
     })));
   }, []);
 
-  const cycleLayout = useCallback(() => {
+  const cycleLayout = useCallback((): MultiViewLayout => {
     const layouts: MultiViewLayout[] = ['single', 'dual', 'quad', 'pip'];
     const currentIdx = layouts.indexOf(layout);
     const nextIdx = (currentIdx + 1) % layouts.length;
-    setLayout(layouts[nextIdx]);
+    const nextLayout = layouts[nextIdx];
+    setLayout(nextLayout);
+    return nextLayout;
   }, [layout]);
 
   const swapSlots = useCallback((idA: number, idB: number) => {

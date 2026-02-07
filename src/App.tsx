@@ -332,8 +332,10 @@ function App({ profileSession }: AppProps) {
         key: 'v',
         description: 'Cycle multi-view layout',
         action: () => {
-          multiView.cycleLayout();
-          toastNotifications.info(`Layout: ${multiView.getLayoutIcon()} ${multiView.getLayoutLabel()}`);
+          const nextLayout = multiView.cycleLayout();
+          const labelMap: Record<string, string> = { single: '1x1', dual: '1x2', quad: '2x2', pip: 'PiP' };
+          const iconMap: Record<string, string> = { single: '⬜', dual: '◫', quad: '⊞', pip: '🔲' };
+          toastNotifications.info(`Layout: ${iconMap[nextLayout] || '⬜'} ${labelMap[nextLayout] || '1x1'}`);
         },
       },
     ],
@@ -650,7 +652,9 @@ function App({ profileSession }: AppProps) {
     } else if (key === 'ArrowDown') {
       setCategoryIndex(prev => Math.min(activeCategories.length - 1, prev + 1));
     } else if (key === 'Enter') {
-      const categoryName = activeCategories[categoryIndex].name;
+      const category = activeCategories[categoryIndex];
+      if (!category) return; // Guard against stale index after playlist change
+      const categoryName = category.name;
       checkParentalLock('category', categoryName, () => {
         setSelectedCategory(categoryName);
         setChannelIndex(0);
@@ -704,6 +708,10 @@ function App({ profileSession }: AppProps) {
             }
             
             if (result.success) {
+              // Sync adapter state so space bar play/pause works
+              // (playChannelWithFallback bypasses VlcPlayerAdapter)
+              playerAdapter.syncState('playing', result.url);
+              
               // Track in recent channels
               recentChannels.addRecentChannel(channel);
               
@@ -900,14 +908,22 @@ function App({ profileSession }: AppProps) {
       }
 
       if (e.key === 'a' || e.key === 'A') {
-        e.preventDefault();
-        setShowAnalytics(prev => !prev);
-        return;
+        // Toggle analytics (only when NOT in player focus — player uses 'a' for audio-only)
+        if (focusArea !== 'player') {
+          e.preventDefault();
+          setShowAnalytics(prev => !prev);
+          return;
+        }
       }
 
       if (e.key === 'm' || e.key === 'M') {
         e.preventDefault();
         toggleMute();
+        return;
+      }
+
+      // When search overlay is open, let useChannelSearch handle arrows/Enter
+      if (isSearchOpen) {
         return;
       }
 

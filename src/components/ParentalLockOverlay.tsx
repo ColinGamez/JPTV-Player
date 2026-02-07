@@ -88,12 +88,9 @@ export const ParentalLockOverlay: React.FC<ParentalLockOverlayProps> = ({
     }
   }, [pin.length, lockedUntil]);
 
-  // Auto-submit when PIN reaches 4-6 digits
-  useEffect(() => {
-    if (pin.length >= 4 && pin.length <= 6 && !isVerifyingRef.current) {
-      handleSubmit();
-    }
-  }, [pin, handleSubmit]);
+  // PIN submission is handled by the Enter key in the keydown handler below.
+  // Auto-submit was removed because it fires at 4, 5, AND 6 digits —
+  // causing false rejections (and lockout attempts) for PINs longer than 4 digits.
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

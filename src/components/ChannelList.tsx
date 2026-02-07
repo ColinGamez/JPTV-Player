@@ -23,7 +23,7 @@ function ChannelList({ channels, selectedIndex, focused, favorites }: ChannelLis
           const channelKey = channelId;
           
           // Get health score (dev mode only)
-          const health = isDevMode ? getHealthForChannel(channel.url) : null;
+          const health = isDevMode ? getHealthForChannel(channelId) : null;
           
           return (
             <div

@@ -815,7 +815,7 @@ ipcMain.handle('file:read', async (_event, filePath: string) => {
     }
 
     logger?.debug('Reading file', { filePath: resolvedPath });
-    const content = fs.readFileSync(resolvedPath, 'utf-8');
+    const content = await fs.promises.readFile(resolvedPath, 'utf-8');
     return content;
   } catch (error) {
     logger?.error('Failed to read file', { filePath, error });
@@ -837,6 +837,13 @@ ipcMain.handle('player:play', async (_event, url: string) => {
 
   try {
     logger?.info('Play requested', { url });
+    
+    // Security: Only allow safe URL schemes for playback
+    const allowedSchemes = ['http://', 'https://', 'rtsp://', 'rtp://'];
+    if (!allowedSchemes.some(scheme => url.startsWith(scheme))) {
+      logger?.warn('Play rejected: disallowed URL scheme', { url });
+      return { success: false, error: 'URL scheme not allowed' };
+    }
     
     // Reset restart attempts for new URL
     restartAttempts.delete(url);
@@ -1731,7 +1738,7 @@ function cleanupOrphanedVlcProcesses(): void {
     const { execSync } = require('child_process');
     
     // Find VLC processes
-    const result = execSync('tasklist /FI "IMAGENAME eq vlc.exe" /FO CSV /NH', { encoding: 'utf8' });
+    const result = execSync('tasklist /FI "IMAGENAME eq vlc.exe" /FO CSV /NH', { encoding: 'utf8', timeout: 5000 });
     
     if (result.includes('vlc.exe')) {
       logger?.warn('Found orphaned VLC processes, attempting cleanup', { processes: result.trim() });

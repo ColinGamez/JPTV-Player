@@ -161,4 +161,15 @@ export class VlcPlayerAdapter implements PlayerAdapter {
   getState(): PlayerState {
     return this.currentState;
   }
+
+  /**
+   * Sync adapter state when playback is started externally (e.g. via useChannelFallback IPC).
+   * This ensures isPlaying() returns the correct value for space bar toggle.
+   */
+  syncState(state: PlayerState, url?: string): void {
+    if (url) {
+      this.lastUrl = url;
+    }
+    this.updateState(state);
+  }
 }

@@ -93,7 +93,7 @@ export const ParentalLockSettings: React.FC<ParentalLockSettingsProps> = ({
       <div className={styles.modal}>
         <div className={styles.header}>
           <h2 className={styles.title}>🔒 Parental Lock Settings</h2>
-          <button className={styles.closeButton} onClick={onClose}>
+          <button className={styles.closeButton} onClick={onClose} aria-label="Close parental lock settings">
             ×
           </button>
         </div>
