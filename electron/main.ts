@@ -665,20 +665,25 @@ function parsePlaylistFromPath(filePath: string) {
 ipcMain.handle('dialog:openPlaylist', async () => {
   if (!mainWindow) return null;
   
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: 'Playlist Files', extensions: ['m3u', 'm3u8'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  });
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Playlist Files', extensions: ['m3u', 'm3u8'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
 
-  if (result.canceled || result.filePaths.length === 0) {
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    const filePath = result.filePaths[0];
+    return parsePlaylistFromPath(filePath);
+  } catch (error) {
+    logger?.error('Failed to open playlist dialog', { error });
     return null;
   }
-
-  const filePath = result.filePaths[0];
-  return parsePlaylistFromPath(filePath);
 });
 
 // Load playlist from saved path (for profile restoration)
@@ -732,17 +737,32 @@ ipcMain.handle('playlist:loadFromPath', async (_event, filePath: string) => {
 });
 
 ipcMain.handle('settings:load', () => {
-  return loadSettings();
+  try {
+    return loadSettings();
+  } catch (error) {
+    logger?.error('Failed to load settings', { error });
+    return defaultSettings;
+  }
 });
 
 ipcMain.handle('settings:save', (_event, settings: AppSettings) => {
-  saveSettings(settings);
-  return true;
+  try {
+    saveSettings(settings);
+    return true;
+  } catch (error) {
+    logger?.error('Failed to save settings', { error });
+    return false;
+  }
 });
 
 ipcMain.handle('settings:get', (_event, key: keyof AppSettings) => {
-  const settings = loadSettings();
-  return settings[key];
+  try {
+    const settings = loadSettings();
+    return settings[key];
+  } catch (error) {
+    logger?.error('Failed to get setting', { key, error });
+    return undefined;
+  }
 });
 
 const VALID_SETTINGS_KEYS: ReadonlySet<keyof AppSettings> = new Set([
@@ -850,7 +870,7 @@ ipcMain.handle('player:play', async (_event, url: string) => {
     return { success: isPlaying, error: isPlaying ? undefined : 'Failed to play stream' };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown playback error';
-    console.error('[VLC] Play error:', error);
+    logger?.error('[VLC] Play error', { error: errorMsg });
     
     // Try to recover
     try {

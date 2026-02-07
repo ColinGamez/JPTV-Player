@@ -2,7 +2,7 @@
   position: fixed;
   top: 20%;
   right: 40px;
-  z-index: 9999;
+  z-index: 9500;
   animation: channelSlideIn 0.3s ease-out;
 }
 

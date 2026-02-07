@@ -125,7 +125,6 @@ export class ProfileManager {
     };
     this.saveProfileData(profile.id, initialData);
 
-    console.log(`[ProfileManager] Created profile: ${profile.name}`);
     this.logger?.info('[ProfileManager] Created profile', { id: profile.id, name: profile.name });
     return profile;
   }
