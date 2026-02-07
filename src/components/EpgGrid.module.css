@@ -219,5 +219,4 @@
   background: #4a9eff;
   transform-origin: left;
   transition: transform 1s linear;
-  will-change: transform;
 }

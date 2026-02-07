@@ -11,9 +11,10 @@ const electronApi = {
   getSetting: (key: keyof AppSettings) => ipcRenderer.invoke('settings:get', key),
   setSetting: (key: keyof AppSettings, value: any) => ipcRenderer.invoke('settings:set', key, value),
   
-  // Error logging (used by ErrorBoundary)
+  // Error logging (used by ErrorBoundary) — forwards to main process log file
   logError: (error: string, componentStack: string) => {
     console.error('[Renderer Error]', error, componentStack);
+    ipcRenderer.send('renderer:error', { error, componentStack });
   },
 
   // Shell (for opening external links)

@@ -157,15 +157,7 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: #4a9eff;
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
+/* -moz-range-thumb removed: Electron uses Chromium only */
 
 .searchInput {
   width: 100%;

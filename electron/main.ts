@@ -93,6 +93,11 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   // Don't crash on unhandled rejection, but log it prominently
 });
 
+// Forward renderer errors to main process log file
+ipcMain.on('renderer:error', (_event, { error, componentStack }: { error: string; componentStack: string }) => {
+  logger?.error('[Renderer Error]', { error, componentStack });
+});
+
 const MAX_RESTART_ATTEMPTS = 1;
 const FREEZE_CHECK_INTERVAL = 5000; // Check every 5 seconds
 const FREEZE_THRESHOLD = 10; // Consider frozen after 10 seconds

@@ -190,7 +190,6 @@
   border-radius: 2px;
   transform-origin: left;
   transition: transform 1s linear;
-  will-change: transform;
 }
 
 .progress-text {
@@ -281,9 +280,4 @@
   display: none;
 }
 
-/* Smooth transitions */
-.channel-info-panel * {
-  transition-property: opacity, transform, color, background-color, border-color;
-  transition-duration: 0.2s;
-  transition-timing-function: ease;
-}
+/* Transitions applied to specific elements only — wildcard * causes layout thrashing */

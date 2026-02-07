@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component<Props, State> {
             The application encountered an error. Please restart the app.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => this.setState({ hasError: false, error: null })}
             style={{
               padding: '12px 24px',
               fontSize: '16px',
@@ -84,6 +84,21 @@ export class ErrorBoundary extends Component<Props, State> {
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer',
+            }}
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              backgroundColor: '#333',
+              color: '#fff',
+              border: '1px solid #555',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              marginLeft: '12px',
             }}
           >
             Reload App
