@@ -39,8 +39,8 @@ export const PinEntry: React.FC<PinEntryProps> = ({
         const newPin = pin + e.key;
         setPin(newPin);
         
-        // Auto-submit when reaching min length (4)
-        if (newPin.length >= 4) {
+        // Auto-submit only when reaching max PIN length
+        if (newPin.length === PIN_LENGTH) {
           // Small delay for visual feedback
           setTimeout(() => onSubmit(newPin), 200);
         }

@@ -91,7 +91,7 @@ const Row = memo(({ index, style, data }: ListChildComponentProps<RowItemData>) 
               <div className={styles.programCategory}>{block.program.category}</div>
             )}
             {block.isNow && (
-              <div className={styles.progressBar} style={{ width: `${block.progress}%` }} />
+              <div className={styles.progressBar} style={{ transform: `scaleX(${(block.progress ?? 0) / 100})` }} />
             )}
           </div>
         ))}

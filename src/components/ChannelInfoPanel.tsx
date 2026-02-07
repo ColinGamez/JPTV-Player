@@ -166,7 +166,7 @@ export const ChannelInfoPanel: React.FC<ChannelInfoPanelProps> = ({
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
-                    style={{ width: `${progress}%` }}
+                    style={{ transform: `scaleX(${(progress ?? 0) / 100})` }}
                   />
                 </div>
                 <div className="progress-text">{getRemainingTime()}</div>

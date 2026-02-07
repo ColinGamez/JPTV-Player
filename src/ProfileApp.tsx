@@ -88,13 +88,13 @@ const ProfileApp: React.FC = () => {
       }
     }, 5000); // 5 second timeout
 
-    if (profile.profiles.length > 0 || profile.loading === false) {
+    if (profile.profiles.length > 0 || profile.isLoading === false) {
       attemptAutoLogin();
       clearTimeout(timeoutId);
     }
 
     return () => clearTimeout(timeoutId);
-  }, [profile.profiles, profile.loading, autoLoginAttempted, appState, profile]);
+  }, [profile.profiles, profile.isLoading, autoLoginAttempted, appState, profile]);
 
   // Load last active profile on mount (kept for fallback)
   useEffect(() => {
@@ -197,7 +197,7 @@ const ProfileApp: React.FC = () => {
   }
 
   // Show initializing/loading state
-  if (profile.loading || appState === AppState.Initializing) {
+  if (profile.isLoading || appState === AppState.Initializing) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#fff' }}>
         <p>Starting TV Mode...</p>

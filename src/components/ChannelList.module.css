@@ -52,7 +52,7 @@
   background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,252,255,0.9) 100%);
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border: 3px solid rgba(200, 220, 245, 0.6);
   position: relative;
   overflow: visible;

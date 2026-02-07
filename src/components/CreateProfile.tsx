@@ -76,8 +76,8 @@ export const CreateProfile: React.FC<CreateProfileProps> = ({
             const newPin = pin + e.key;
             setPin(newPin);
             
-            // Auto-submit when reaching 4 digits
-            if (newPin.length >= 4) {
+            // Auto-submit only when reaching max PIN length (6)
+            if (newPin.length === 6) {
               setTimeout(() => {
                 onSubmit(name, newPin, AVATAR_OPTIONS[selectedAvatar]);
               }, 200);

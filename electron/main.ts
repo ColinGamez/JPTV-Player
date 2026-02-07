@@ -292,7 +292,7 @@ function createWindow() {
               type: 'info',
               title: 'About JPTV Player',
               message: 'JPTV Player',
-              detail: `Version: ${app.getVersion()}\\nElectron IPTV Player with VLC backend`
+              detail: `Version: ${app.getVersion()}\nElectron IPTV Player with VLC backend`
             });
           }
         }
@@ -885,6 +885,9 @@ ipcMain.handle('player:setVolume', async (_event, volume: number) => {
   }
 
   try {
+    // Update base volume for audio normalization tracking
+    audioBaseVolume = volume;
+    audioAppliedGainDb = 0; // Reset gain when user manually sets volume
     const success = vlcPlayer.setVolume(volume);
     return { success };
   } catch (error) {
@@ -1257,6 +1260,10 @@ ipcMain.handle('player:getAudioOnly', async () => {
 */
 
 // Audio normalization IPC handlers
+// Track the base volume (before gain) and applied gain to prevent feedback loop
+let audioBaseVolume: number = 50; // The user-set volume before normalization gain
+let audioAppliedGainDb: number = 0; // Currently applied gain in dB
+
 ipcMain.handle('vlc:getAudioLevel', async () => {
   if (!vlcPlayer) {
     logger?.warn('VLC player not initialized for getAudioLevel');
@@ -1265,8 +1272,9 @@ ipcMain.handle('vlc:getAudioLevel', async () => {
 
   try {
     // Get current audio volume as a proxy for level
-    // In a real implementation, this would use VLC's audio meter
-    const volume = vlcPlayer.getVolume();
+    // Use base volume (pre-gain) to prevent feedback loop where
+    // applied gain shifts the reading, causing another gain adjustment
+    const volume = audioBaseVolume;
     // Convert volume (0-100) to dB approximation
     // Rough conversion: 0 = -96dB, 50 = -23dB (LUFS target), 100 = 0dB
     const db = volume === 0 ? -96 : (volume / 100) * 96 - 96;
@@ -1284,20 +1292,19 @@ ipcMain.handle('vlc:setAudioGain', async (_event, gainDb: number) => {
   }
 
   try {
-    // Convert dB gain to volume adjustment
-    // This is a simplified approach - real implementation would use VLC's audio filters
-    // Current volume is the baseline, we adjust relative to it
-    const currentVolume = vlcPlayer.getVolume();
+    // Apply gain relative to the base volume (not the current adjusted volume)
+    // This prevents the feedback loop where applied gain shifts the next reading
+    audioAppliedGainDb = gainDb;
     
     // Convert gain (dB) to linear scale factor
     // 6 dB = 2x, -6 dB = 0.5x
     const linearGain = Math.pow(10, gainDb / 20);
     
-    // Apply gain, clamping to valid range
-    const newVolume = Math.max(0, Math.min(100, currentVolume * linearGain));
+    // Apply gain to base volume, clamping to valid range
+    const newVolume = Math.max(0, Math.min(100, audioBaseVolume * linearGain));
     
     vlcPlayer.setVolume(newVolume);
-    logger?.info('Applied audio gain', { gainDb, currentVolume, newVolume });
+    logger?.info('Applied audio gain', { gainDb, baseVolume: audioBaseVolume, newVolume });
   } catch (error) {
     logger?.error('SetAudioGain error', { error });
   }
@@ -1724,8 +1731,9 @@ app.on('before-quit', (event) => {
   }
 
   // 5. Now actually quit
+  // NOTE: Do NOT reset isShuttingDown — app.quit() re-emits before-quit,
+  // and the guard at the top must return immediately to let the quit proceed.
   setTimeout(() => {
-    isShuttingDown = false;
     app.quit();
   }, 100);
 });

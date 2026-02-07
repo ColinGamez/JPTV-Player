@@ -58,7 +58,7 @@ export const ChannelNumberOverlay: React.FC<ChannelNumberOverlayProps> = ({
         <div className="channel-number-progress">
           <div 
             className="channel-number-progress-fill"
-            style={{ width: `${progress}%` }}
+            style={{ transform: `scaleX(${(progress ?? 0) / 100})` }}
           />
         </div>
       </div>

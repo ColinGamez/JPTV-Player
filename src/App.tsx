@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { mockChannels, mockCategories } from './data/mockData';
 import type { Channel as MockChannel } from './data/mockData';
 import type { Channel } from './types/channel';
@@ -89,6 +89,10 @@ function App({ profileSession }: AppProps) {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [pendingLockAction, setPendingLockAction] = useState<{ type: 'category' | 'channel', id: string, callback: () => void } | null>(null);
   const hasRestoredChannel = useRef(false);
+  const selectedChannelRef = useRef(selectedChannel);
+  selectedChannelRef.current = selectedChannel;
+  const channelIndexRef = useRef(channelIndex);
+  channelIndexRef.current = channelIndex;
   const lastNavigationTime = useRef<number>(0);
   const navigationThrottle = 100; // ms between navigation events
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -110,7 +114,7 @@ function App({ profileSession }: AppProps) {
   const parentalLock = useParentalLock();
   
   // TV Mode: UI auto-hide with keyboard-only wake
-  const { isUIVisible, showUI, hideUI, resetTimer } = useUIAutoHide(5000);
+  const { isUIVisible, showUI, hideUI, resetTimer } = useUIAutoHide({ hideDelay: 5000 });
   
   // TV Mode: Fullscreen management with profile persistence
   const { isFullscreen, toggleFullscreen, setFullscreen } = useFullscreen({
@@ -507,7 +511,7 @@ function App({ profileSession }: AppProps) {
     };
   }, [audioNormalization]);
 
-  // Listen for menu events (Donate from Help menu)
+  // Listen for menu events (Donate, Open Playlist) and player errors
   useEffect(() => {
     if (!isElectron) return;
 
@@ -515,16 +519,29 @@ function App({ profileSession }: AppProps) {
       setShowDonationJar(true);
     };
 
-    // Listen for IPC events from menu
+    const handleMenuOpenPlaylist = () => {
+      openPlaylist();
+    };
+
+    const handlePlayerError = (data: { message: string; url: string }) => {
+      updateState('error', selectedChannel?.name, data.message);
+      toastNotifications.error(data.message);
+    };
+
+    // Listen for IPC events from menu and player
     const ipcRenderer = (window as any).electron?.ipcRenderer;
     if (ipcRenderer) {
       ipcRenderer.on('menu:openDonation', handleMenuOpenDonation);
+      ipcRenderer.on('menu:openPlaylist', handleMenuOpenPlaylist);
+      ipcRenderer.on('player:error', handlePlayerError);
       
       return () => {
         ipcRenderer.removeListener('menu:openDonation', handleMenuOpenDonation);
+        ipcRenderer.removeListener('menu:openPlaylist', handleMenuOpenPlaylist);
+        ipcRenderer.removeListener('player:error', handlePlayerError);
       };
     }
-  }, [isElectron]);
+  }, [isElectron, openPlaylist, selectedChannel, updateState, toastNotifications]);
 
   // Refresh EPG now/next when channel changes
   useEffect(() => {
@@ -547,6 +564,7 @@ function App({ profileSession }: AppProps) {
   }, [showUI, resetTimer]);
 
   // Handle profile changes (logout/switch)
+  // Uses refs for selectedChannel/channelIndex to avoid re-subscribing on every channel change
   useEffect(() => {
     const unsubscribe = profile.onProfileChange(async (newSession, oldSession) => {
       console.log('[App] Profile change detected:', {
@@ -555,7 +573,7 @@ function App({ profileSession }: AppProps) {
       });
 
       // Stop playback
-      if (selectedChannel) {
+      if (selectedChannelRef.current) {
         console.log('[App] Stopping playback due to profile change');
         try {
           await playerAdapter.stop();
@@ -568,10 +586,10 @@ function App({ profileSession }: AppProps) {
       audioNormalization.stopMonitoring();
       
       // Save last channel for old profile
-      if (oldSession && selectedChannel) {
+      if (oldSession && selectedChannelRef.current) {
         console.log('[App] Saving last channel for old profile');
         try {
-          await saveLastChannel(selectedChannel, channelIndex, updateSetting);
+          await saveLastChannel(selectedChannelRef.current, channelIndexRef.current, updateSetting);
         } catch (err) {
           console.error('[App] Failed to save last channel:', err);
         }
@@ -591,7 +609,7 @@ function App({ profileSession }: AppProps) {
     });
 
     return unsubscribe;
-  }, [profile, selectedChannel, channelIndex, audioNormalization, updateSetting]);
+  }, [profile, audioNormalization, updateSetting]);
 
   // NOTE: Channel restore is handled by the "TV Mode: Auto-play last channel" effect above.
   // That effect uses activeChannels (category-filtered) which is the correct source.
@@ -886,6 +904,29 @@ function App({ profileSession }: AppProps) {
     }
   }, [updateSetting, selectedChannel, isRecording, startRecording, stopRecording, toggleAudioOnly]);
 
+  // Pre-compute EPG now/next data for selected channel to avoid repeated Map lookups in JSX
+  const selectedChannelEpgId = selectedChannel ? String(selectedChannel.id) : '';
+  const selectedChannelNowNext = selectedChannel ? nowNext.get(selectedChannelEpgId) : undefined;
+  
+  const channelCurrentProgram = useMemo(() => {
+    if (!selectedChannelNowNext?.now) return null;
+    return {
+      title: selectedChannelNowNext.now.title,
+      startTime: selectedChannelNowNext.now.start,
+      endTime: selectedChannelNowNext.now.end,
+      description: selectedChannelNowNext.now.description,
+    };
+  }, [selectedChannelNowNext]);
+
+  const channelNextProgram = useMemo(() => {
+    if (!selectedChannelNowNext?.next) return null;
+    return {
+      title: selectedChannelNowNext.next.title,
+      startTime: selectedChannelNowNext.next.start,
+      endTime: selectedChannelNowNext.next.end,
+    };
+  }, [selectedChannelNowNext]);
+
   return (
     <div className={styles.app}>
       {/* TV Mode: Category rail and channel list auto-hide */}
@@ -1063,21 +1104,8 @@ function App({ profileSession }: AppProps) {
       {selectedChannel && (
         <ChannelInfoPanel
           channel={selectedChannel}
-          currentProgram={
-            nowNext.get(String(selectedChannel.id))?.now ? {
-              title: nowNext.get(String(selectedChannel.id))!.now!.title,
-              startTime: nowNext.get(String(selectedChannel.id))!.now!.start,
-              endTime: nowNext.get(String(selectedChannel.id))!.now!.end,
-              description: nowNext.get(String(selectedChannel.id))!.now!.description,
-            } : null
-          }
-          nextProgram={
-            nowNext.get(String(selectedChannel.id))?.next ? {
-              title: nowNext.get(String(selectedChannel.id))!.next!.title,
-              startTime: nowNext.get(String(selectedChannel.id))!.next!.start,
-              endTime: nowNext.get(String(selectedChannel.id))!.next!.end,
-            } : null
-          }
+          currentProgram={channelCurrentProgram}
+          nextProgram={channelNextProgram}
           isFavorite={channelFavorites.isFavorite(String(selectedChannel.id))}
           onToggleFavorite={() => {
             const channelId = String(selectedChannel.id);
