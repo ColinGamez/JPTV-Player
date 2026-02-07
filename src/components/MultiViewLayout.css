@@ -32,7 +32,7 @@
   background: #111;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: outline-color 0.2s;
 }
 
 .multiview-slot:hover {

@@ -159,5 +159,6 @@ export function useChannelSearch({ channels, onSelectChannel }: UseChannelSearch
     updateQuery,
     moveSelection,
     selectCurrent,
+    setSelectedIndex,
   };
 }

@@ -257,7 +257,7 @@
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
   border: none;
 }
 

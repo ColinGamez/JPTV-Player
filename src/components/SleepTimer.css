@@ -46,7 +46,7 @@
   color: var(--theme-text-primary, #fff);
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .sleep-timer-close:hover {
@@ -111,7 +111,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .timer-extend:hover {
@@ -127,7 +127,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: opacity 0.2s;
 }
 
 .timer-cancel:hover {
@@ -158,7 +158,7 @@
   border: 2px solid var(--theme-border-primary, rgba(255, 255, 255, 0.1));
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
   color: var(--theme-text-primary, #fff);
 }
 
@@ -204,7 +204,7 @@
   font-weight: 600;
   cursor: pointer;
   z-index: 9000;
-  transition: all 0.2s;
+  transition: background 0.2s, transform 0.2s;
   animation: slideDown 0.3s ease-out;
 }
 

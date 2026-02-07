@@ -46,7 +46,7 @@
   color: var(--theme-text-primary, #fff);
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .theme-close-btn:hover {
@@ -68,7 +68,7 @@
   border: 2px solid transparent;
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s;
   color: var(--theme-text-primary, #fff);
   font-size: 15px;
   font-weight: 500;

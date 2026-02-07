@@ -61,6 +61,10 @@ export const ChannelInfoPanel: React.FC<ChannelInfoPanelProps> = ({
       const start = currentProgram.startTime.getTime();
       const end = currentProgram.endTime.getTime();
       const duration = end - start;
+      if (duration <= 0) {
+        setProgress(0);
+        return;
+      }
       const elapsed = now - start;
       const progressPercent = Math.max(0, Math.min(100, (elapsed / duration) * 100));
       setProgress(progressPercent);

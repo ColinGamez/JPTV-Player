@@ -15,6 +15,7 @@ interface ChannelSearchModalProps {
   onQueryChange: (query: string) => void;
   onSelect: (channel: Channel) => void;
   onClose: () => void;
+  onHoverIndex?: (index: number) => void;
 }
 
 export const ChannelSearchModal: React.FC<ChannelSearchModalProps> = ({
@@ -25,6 +26,7 @@ export const ChannelSearchModal: React.FC<ChannelSearchModalProps> = ({
   onQueryChange,
   onSelect,
   onClose,
+  onHoverIndex,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const selectedRef = useRef<HTMLDivElement>(null);
@@ -94,7 +96,8 @@ export const ChannelSearchModal: React.FC<ChannelSearchModalProps> = ({
               className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
               onClick={() => onSelect(channel)}
               onMouseEnter={() => {
-                // Mouse hover updates selection (but keyboard nav still works)
+                // Mouse hover updates selection for visual feedback
+                onHoverIndex?.(index);
               }}
             >
               {channel.logo && (

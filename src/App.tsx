@@ -158,6 +158,7 @@ function App({ profileSession }: AppProps) {
     closeSearch,
     updateQuery,
     selectCurrent: selectSearchResult,
+    setSelectedIndex: setSearchSelectedIndex,
   } = useChannelSearch({
     channels: activeChannels,
     onSelectChannel: async (channel) => {
@@ -524,7 +525,7 @@ function App({ profileSession }: AppProps) {
     };
 
     const handlePlayerError = (data: { message: string; url: string }) => {
-      updateState('error', selectedChannel?.name, data.message);
+      updateState('error', selectedChannelRef.current?.name, data.message);
       toastNotifications.error(data.message);
     };
 
@@ -541,7 +542,7 @@ function App({ profileSession }: AppProps) {
         ipcRenderer.removeListener('player:error', handlePlayerError);
       };
     }
-  }, [isElectron, openPlaylist, selectedChannel, updateState, toastNotifications]);
+  }, [isElectron, openPlaylist, updateState, toastNotifications.error]);
 
   // Refresh EPG now/next when channel changes
   useEffect(() => {
@@ -769,7 +770,7 @@ function App({ profileSession }: AppProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusArea, categoryIndex, channelIndex, filteredChannels.length, selectedChannel, isElectron,
+  }, [focusArea, selectedChannel, isElectron,
       showDonationJar, showParentalLockSettings, showFullGuide, showNowNext, showInfo,
       showShortcutsHelp, showChannelGrid, showAnalytics, showSleepTimer, isSearchOpen,
       showUI, resetTimer, toggleFullscreen, toggleMute, closeSearch,
@@ -1073,6 +1074,7 @@ function App({ profileSession }: AppProps) {
           closeSearch();
         }}
         onClose={closeSearch}
+        onHoverIndex={setSearchSelectedIndex}
       />
 
       {/* Keyboard Shortcuts Help */}
